@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2023",
+    "useDefineForClassFields": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "resolveJsonModule": true,
+    "useUnknownInCatchVariables": false,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    "paths": {
+      "@/*": ["src/*"],
+      "@Signal/*": ["src/library/@signal-private/*"],
+      "@FormSignal/*": ["src/library/@form-core/*"],
+      "@Utils/*": ["src/common/*"],
+      "@Hooks/*": ["src/hook/*"],
+      "@Pages/*": ["src/pages/*"],
+      "@MainMenu/*": ["src/pages/MainMenu/*"],
+      "@MasterData/*": ["src/pages/MasterData/*"],
+      "@ManajemenLokasi/*": ["src/pages/ManajemenLokasi/*"],
+      "@Transaksi/*": ["src/pages/Transaksi/*"]
+    }
+  },
+  // "files": [],
+  // "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
