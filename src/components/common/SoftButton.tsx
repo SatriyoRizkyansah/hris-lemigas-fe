@@ -11,15 +11,15 @@ const baseStyles = {
   px: 2,
   py: 0.65,
 
-  backgroundColor: "#fdfdfd", // off-white
-  color: "#18181b", // soft black
-  border: "1px solid #e4e4e7", // zinc-200
+  backgroundColor: "var(--card)",
+  color: "var(--foreground)",
+  border: "1px solid var(--border)",
 
   boxShadow: "0 10px 25px rgba(24, 24, 27, 0.10)",
   transition: "transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease",
 
   "&:hover": {
-    backgroundColor: "#f4f4f5", // zinc-100
+    backgroundColor: "var(--muted)",
     boxShadow: "0 14px 32px rgba(24, 24, 27, 0.14)",
     transform: "translateY(-1px)",
   },
@@ -27,6 +27,14 @@ const baseStyles = {
   "&:active": {
     transform: "translateY(0)",
     boxShadow: "0 8px 18px rgba(24, 24, 27, 0.16)",
+  },
+
+  "&.Mui-disabled": {
+    backgroundColor: "var(--muted)",
+    color: "var(--muted-foreground)",
+    borderColor: "var(--border)",
+    boxShadow: "none",
+    opacity: 1,
   },
 };
 

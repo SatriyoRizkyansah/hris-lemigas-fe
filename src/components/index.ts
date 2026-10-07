@@ -21,7 +21,7 @@ export type { DataTableProps, ServerDataTableProps, ServerTableFilter, TableFilt
 export { WeekNavigation, ShiftCell } from "./calendar";
 export { AttendanceStatusCell, ATTENDANCE_STATUS_CONFIG, ATTENDANCE_STATUS_ORDER, getAttendanceStatus } from "./attendance/AttendanceStatus";
 export type { AttendanceStatusCode, AttendanceStatusMeta, AttendanceStatusCellProps } from "./attendance/AttendanceStatus";
-export { ActionButton, ActionMenuButton, ActionButtonGroup } from "./button";
+export { ActionButton, ActionMenuButton, ActionButtonGroup, FileUploadInput, FileViewerButton } from "./button";
 export type { ActionMenuItem } from "./button";
 export { StatusChip } from "./chip/status-chip";
 export { HomebaseBadge } from "./chip/homebase-badge";

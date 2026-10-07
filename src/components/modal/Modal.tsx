@@ -73,7 +73,7 @@ export function Modal({ open, onClose, title, description, sections, children, a
       >
         <Box sx={{ p: { xs: 2, sm: 3 }, pb: 0, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 }}>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: "var(--foreground)", mb: 0.5 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: "var(--primary)", mb: 0.5 }}>
               {title}
             </Typography>
             {description && (
