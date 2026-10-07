@@ -175,30 +175,34 @@ export function SkPage() {
     {
       id: "nomor_sk",
       label: "Nomor SK",
-      render: (_, row) => <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)" }}>{String(row.nomor_sk ?? "-")}</Typography>,
+      width: 165,
+      render: (_, row) => <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", wordBreak: "break-all", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.nomor_sk ?? "-")}</Typography>,
     },
     {
       id: "nama_pegawai",
       label: "Pegawai",
+      width: 210,
       sortable: true,
       render: (_, row) => (
-        <Box>
-          <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)" }}>{String(row.nama_pegawai ?? "-")}</Typography>
-          <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{String(row.nip_nik ?? "-")}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)", wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.3 }}>{String(row.nama_pegawai ?? "-")}</Typography>
+          <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", wordBreak: "break-all", whiteSpace: "normal", lineHeight: 1.3 }}>{String(row.nip_nik ?? "-")}</Typography>
         </Box>
       ),
     },
-    { id: "nama_unit_kerja", label: "Unit Kerja", hideMobile: true, render: (_, row) => String(row.nama_unit_kerja ?? "-") },
-    { id: "jabatan", label: "Jabatan", render: (_, row) => String(row.jabatan ?? "-") },
+    { id: "nama_unit_kerja", label: "Unit Kerja", width: 170, hideMobile: true, render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.nama_unit_kerja ?? "-")}</Box> },
+    { id: "jabatan", label: "Jabatan", width: 170, render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.jabatan ?? "-")}</Box> },
     {
       id: "tanggal_efektif",
       label: "Masa Berlaku",
+      width: 175,
       hideMobile: true,
-      render: (_, row) => `${format_date(row.tanggal_efektif)} s.d. ${format_date(row.tanggal_selesai)}`,
+      render: (_, row) => <Box sx={{ whiteSpace: "normal", wordBreak: "break-word", fontSize: "0.8rem", lineHeight: 1.4 }}>{`${format_date(row.tanggal_efektif)} s.d. ${format_date(row.tanggal_selesai)}`}</Box>,
     },
     {
       id: "status_aktif",
       label: "Status",
+      width: 95,
       render: (_, row) => <StatusChip label={String(row.status_aktif ?? "-")} variant={status_variant(row.status_aktif)} size="small" />,
     },
     ...(can_edit
@@ -206,6 +210,7 @@ export function SkPage() {
           {
             id: "aksi",
             label: "Aksi",
+            width: 115,
             align: "right" as const,
             render: (_: any, row: any) => (
               <ActionButtonGroup>

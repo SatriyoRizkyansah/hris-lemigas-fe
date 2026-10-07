@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Grid, TextField, Typography } from "@mui/material";
 import { AddOutlined, EditOutlined, BlockOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
@@ -84,19 +84,40 @@ export function AlokasiGajiPage() {
     label: `${p.nama} — ${p.nip_nik}`,
   }));
 
-  const ro_options = unwrap_list(ro_query.response).map((r: any) => ({
+  // Build map of pegawai id to data for root coordinator lookup
+  const pegawaiMap = new Map<string, any>();
+  unwrap_list(pegawai_query.response).forEach((p: any) => {
+    pegawaiMap.set(p.id, p);
+  });
+  const selectedPegawai = form.id_pegawai ? pegawaiMap.get(form.id_pegawai) : null;
+  const rootKoordinatorId = selectedPegawai?.unit_kerja?.parent_unit_id ?? null;
+
+  const ro_options_all = unwrap_list(ro_query.response).map((r: any) => ({
     value: String(r.id),
     label: `${r.kode_ro} — ${r.nama_ro}`,
+    unitKoordinatorId: r.unit_koordinator?.id ?? null,
   }));
+  const ro_options = rootKoordinatorId ? ro_options_all.filter((o) => o.unitKoordinatorId === rootKoordinatorId) : [];
 
-  const do_options = unwrap_list(do_query.response).map((d: any) => ({
+  const do_options_all = unwrap_list(do_query.response).map((d: any) => ({
     value: String(d.id),
     label: `${d.tahun_fiscal} — ${format_rupiah(d.total_plafon)} (${d.nama_unit_koordinator ?? "-"})`,
+    unitKoordinatorId: d.unit_koordinator?.id ?? null,
   }));
+  const do_options = rootKoordinatorId ? do_options_all.filter((o) => o.unitKoordinatorId === rootKoordinatorId) : [];
 
   const set_field = (key: string, value: any) => {
     setForm((f: any) => ({ ...f, [key]: value }));
   };
+
+  // Reset dependent fields when pegawai or tahun changes
+  useEffect(() => {
+    setForm((f: any) => ({
+      ...f,
+      id_ro: "",
+      id_dana_operasional: "",
+    }));
+  }, [form.id_pegawai, form.periode_tahun]);
 
   const create_mutation = use_mutation({
     api_tag: "alokasiGajiTa",

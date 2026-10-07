@@ -164,37 +164,42 @@ export function PegawaiPage() {
     {
       id: "nip_nik",
       label: "NIP/NIK",
+      width: 145,
       sortable: true,
-      render: (_, row) => <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)" }}>{String(row.nip_nik ?? "-")}</Typography>,
+      render: (_, row) => <Typography sx={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--foreground)", wordBreak: "break-all", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.nip_nik ?? "-")}</Typography>,
     },
     {
       id: "nama",
       label: "Nama",
+      width: 210,
       sortable: true,
       render: (_, row) => (
-        <Box>
-          <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)" }}>{String(row.nama ?? "-")}</Typography>
-          <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{String(row.email ?? "-")}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)", wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.3 }}>{String(row.nama ?? "-")}</Typography>
+          <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", wordBreak: "break-all", whiteSpace: "normal", lineHeight: 1.3 }}>{String(row.email ?? "-")}</Typography>
         </Box>
       ),
     },
     {
       id: "tipe_pegawai",
       label: "Tipe",
+      width: 85,
       render: (_, row) => <StatusChip label={String(row.tipe_pegawai ?? "-")} variant={row.tipe_pegawai === "TA" ? "info" : "neutral"} size="small" />,
     },
-    { id: "jabatan", label: "Jabatan", render: (_, row) => String(row.jabatan ?? "-") },
-    { id: "nama_unit_kerja", label: "Unit Kerja", hideMobile: true, render: (_, row) => String(row.nama_unit_kerja ?? "-") },
+    { id: "jabatan", label: "Jabatan", width: 170, render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.jabatan ?? "-")}</Box> },
+    { id: "nama_unit_kerja", label: "Unit Kerja", width: 170, hideMobile: true, render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.nama_unit_kerja ?? "-")}</Box> },
     {
       id: "gaji_bulanan",
       label: "Gaji/Bulan",
+      width: 135,
       align: "right",
       hideMobile: true,
-      render: (_, row) => format_rupiah(row.gaji_bulanan),
+      render: (_, row) => <Box sx={{ whiteSpace: "nowrap" }}>{format_rupiah(row.gaji_bulanan)}</Box>,
     },
     {
       id: "status_aktif",
       label: "Status",
+      width: 95,
       render: (_, row) => <StatusChip label={String(row.status_aktif ?? "-")} variant={status_variant(row.status_aktif)} size="small" />,
     },
     ...(can_edit
@@ -202,6 +207,7 @@ export function PegawaiPage() {
           {
             id: "aksi",
             label: "Aksi",
+            width: 75,
             align: "right" as const,
             render: (_: any, row: any) => (
               <ActionButtonGroup>

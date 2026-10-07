@@ -198,9 +198,7 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                                 lineHeight: 1.4,
                               }}
                             >
-                              {primaryCol.render
-                                ? primaryCol.render(row[primaryCol.id], row)
-                                : String(row[primaryCol.id] ?? "-")}
+                              {primaryCol.render ? primaryCol.render(row[primaryCol.id], row) : String(row[primaryCol.id] ?? "-")}
                             </Box>
                           </>
                         )}
@@ -269,14 +267,12 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                 );
               })
             ) : (
-              <Box sx={{ py: 4, textAlign: "center" }}>
-                {emptyState || <Typography color="var(--muted-foreground)">{searchQuery ? "No results found" : "No data available"}</Typography>}
-              </Box>
+              <Box sx={{ py: 4, textAlign: "center" }}>{emptyState || <Typography color="var(--muted-foreground)">{searchQuery ? "No results found" : "No data available"}</Typography>}</Box>
             )
           ) : (
             /* ─── DESKTOP: normal table ─── */
             <TableContainer>
-              <Table size={compact ? "small" : "medium"} sx={{ minWidth: 700 }}>
+              <Table size={compact ? "small" : "medium"} sx={{ minWidth: 700, tableLayout: "fixed" }}>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "color-mix(in srgb, var(--muted) 75%, transparent)", "& th": { borderColor: "var(--border)" } }}>
                     {columns.map((column) => (
@@ -287,8 +283,13 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                           fontWeight: 600,
                           color: "var(--foreground)",
                           width: column.width,
+                          maxWidth: column.width,
                           backgroundColor: "var(--muted)",
                           borderColor: "var(--border)",
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                          whiteSpace: "normal",
+                          verticalAlign: "top",
                         }}
                       >
                         {column.label}
@@ -322,7 +323,18 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                           }}
                         >
                           {columns.map((column) => (
-                            <TableCell key={String(column.id)} align={column.align}>
+                            <TableCell
+                              key={String(column.id)}
+                              align={column.align}
+                              sx={{
+                                width: column.width,
+                                maxWidth: column.width,
+                                wordBreak: "break-word",
+                                overflowWrap: "anywhere",
+                                whiteSpace: "normal",
+                                verticalAlign: "top",
+                              }}
+                            >
                               {column.render ? column.render(row[column.id], row) : String(row[column.id])}
                             </TableCell>
                           ))}

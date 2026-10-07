@@ -53,16 +53,12 @@ export const ServerDataTable = <T extends Record<string, any>>({
   // OR whose align is "center" and is the last column (common pattern)
   const lastCol = columns.length > 1 ? columns[columns.length - 1] : null;
   const ACTION_LABELS = ["aksi", "detail", "action", "actions"];
-  const isLastColAction = lastCol
-    ? ACTION_LABELS.includes(String(lastCol.label).toLowerCase())
-    : false;
+  const isLastColAction = lastCol ? ACTION_LABELS.includes(String(lastCol.label).toLowerCase()) : false;
 
   const primaryCol = isMobile ? columns[0] : null;
   const actionCol = isMobile && isLastColAction ? lastCol : null;
   // detail = everything between first and last (if last is action) or first and end
-  const detailColumns = isMobile
-    ? columns.slice(1, isLastColAction ? columns.length - 1 : columns.length)
-    : [];
+  const detailColumns = isMobile ? columns.slice(1, isLastColAction ? columns.length - 1 : columns.length) : [];
 
   return (
     <Box>
@@ -155,15 +151,12 @@ export const ServerDataTable = <T extends Record<string, any>>({
                                         fontSize: "0.8125rem",
                                         fontWeight: 600,
                                         color: "var(--foreground)",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
+                                        wordBreak: "break-all",
+                                        whiteSpace: "normal",
                                         lineHeight: 1.4,
                                       }}
                                     >
-                                      {primaryCol.render
-                                        ? primaryCol.render(row[primaryCol.id] as any, row)
-                                        : String(row[primaryCol.id] ?? "-")}
+                                      {primaryCol.render ? primaryCol.render(row[primaryCol.id] as any, row) : String(row[primaryCol.id] ?? "-")}
                                     </Box>
                                   </>
                                 )}
@@ -171,10 +164,7 @@ export const ServerDataTable = <T extends Record<string, any>>({
 
                               {/* Action column always top-right */}
                               {actionCol && (
-                                <Box
-                                  sx={{ flexShrink: 0, ml: "auto" }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
+                                <Box sx={{ flexShrink: 0, ml: "auto" }} onClick={(e) => e.stopPropagation()}>
                                   {actionCol.render ? actionCol.render(row[actionCol.id] as any, row) : null}
                                 </Box>
                               )}
@@ -272,9 +262,14 @@ export const ServerDataTable = <T extends Record<string, any>>({
                               color: "var(--foreground)",
                               fontSize: "0.75rem",
                               width: column.width,
+                              maxWidth: column.width,
                               textTransform: "uppercase",
                               letterSpacing: "0.05em",
                               backgroundColor: "var(--muted)",
+                              wordBreak: "break-word",
+                              overflowWrap: "anywhere",
+                              whiteSpace: "normal",
+                              verticalAlign: "top",
                             }}
                           >
                             {column.label}
@@ -313,7 +308,18 @@ export const ServerDataTable = <T extends Record<string, any>>({
                               }}
                             >
                               {columns.map((column) => (
-                                <TableCell key={String(column.id)} align={column.align} sx={{ width: column.width }}>
+                                <TableCell
+                                  key={String(column.id)}
+                                  align={column.align}
+                                  sx={{
+                                    width: column.width,
+                                    maxWidth: column.width,
+                                    wordBreak: "break-word",
+                                    overflowWrap: "anywhere",
+                                    whiteSpace: "normal",
+                                    verticalAlign: "top",
+                                  }}
+                                >
                                   {column.render ? column.render(row[column.id] as any, row) : String(row[column.id] ?? "-")}
                                 </TableCell>
                               ))}
