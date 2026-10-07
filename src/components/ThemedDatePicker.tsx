@@ -10,12 +10,13 @@ interface ThemedDatePickerProps {
   size?: "small" | "medium";
   fullWidth?: boolean;
   required?: boolean;
+  disabled?: boolean;
 }
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-function ThemedDatePickerComponent({ label, value, onChange, size = "small", fullWidth = true, required = false }: ThemedDatePickerProps) {
+function ThemedDatePickerComponent({ label, value, onChange, size = "small", fullWidth = true, required = false, disabled = false }: ThemedDatePickerProps) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => value ?? new Date());
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
@@ -76,17 +77,19 @@ function ThemedDatePickerComponent({ label, value, onChange, size = "small", ful
 
   // ── Stable callbacks ──
   const toggleOpen = useCallback(() => {
+    if (disabled) return;
     updatePosition();
     setOpen((o) => !o);
-  }, [updatePosition]);
+  }, [disabled, updatePosition]);
 
   const handleCalendarIconClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      if (disabled) return;
       updatePosition();
       setOpen((o) => !o);
     },
-    [updatePosition],
+    [disabled, updatePosition],
   );
 
   const handlePrevMonth = useCallback((e: React.MouseEvent) => {
@@ -204,6 +207,7 @@ function ThemedDatePickerComponent({ label, value, onChange, size = "small", ful
         value={displayValue}
         size={size}
         fullWidth={fullWidth}
+        disabled={disabled}
         onClick={toggleOpen}
         placeholder="DD/MM/YYYY"
         InputProps={{

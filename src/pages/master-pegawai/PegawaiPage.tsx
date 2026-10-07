@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, Grid, TextField, Typography, Chip, Divider } from "@mui/material";
 import { AddOutlined, EditOutlined, VisibilityOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, ConfirmDialog, DataTable, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
+import { ActionButton, ActionButtonGroup, ConfirmDialog, DataTable, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip, ThemedDatePicker } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
@@ -26,6 +26,18 @@ function Field({ label, value, onChange, required, disabled, type, multiline }: 
     />
   );
 }
+
+const toDate = (v: string): Date | null => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const fromDate = (d: Date | null): string => {
+  if (!d) return "";
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+};
 
 export function PegawaiPage() {
   const can_edit = resolve_current_role() === "superadmin";
@@ -123,8 +135,6 @@ export function PegawaiPage() {
       tanggal_mulai: "",
       status_aktif: "AKTIF",
       bidang_keahlian: "",
-      kontrak_mulai: "",
-      kontrak_selesai: "",
       gaji_bulanan: "",
       id_unit_kerja: "",
     });
@@ -194,17 +204,19 @@ export function PegawaiPage() {
       email: form.email || undefined,
       telepon: form.telepon || undefined,
       status_aktif: form.status_aktif || undefined,
-      bidang_keahlian: form.bidang_keahlian || undefined,
-      kontrak_mulai: form.kontrak_mulai || undefined,
-      kontrak_selesai: form.kontrak_selesai || undefined,
+      bidang_keahlian: form.tipe_pegawai === "TA" ? form.bidang_keahlian || undefined : undefined,
       gaji_bulanan: form.gaji_bulanan !== "" && form.gaji_bulanan != null ? Number(form.gaji_bulanan) : undefined,
-      id_unit_kerja: form.id_unit_kerja || undefined,
     };
     if (editing) {
+      if (form.tipe_pegawai === "TA") {
+        payload.kontrak_mulai = form.kontrak_mulai || undefined;
+        payload.kontrak_selesai = form.kontrak_selesai || undefined;
+      }
       update_mutation([editing.id, payload]);
     } else {
       payload.nip_nik = form.nip_nik;
       payload.tanggal_mulai = form.tanggal_mulai;
+      payload.id_unit_kerja = form.id_unit_kerja || undefined;
       create_mutation([payload]);
     }
   };
@@ -389,23 +401,44 @@ export function PegawaiPage() {
             <Field label="Telepon" value={form.telepon} onChange={(v: string) => set_field("telepon", v)} />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Tanggal Mulai" value={form.tanggal_mulai} onChange={(v: string) => set_field("tanggal_mulai", v)} required type="date" disabled={Boolean(editing)} />
+            <ThemedDatePicker label="Tanggal Mulai Kerja" value={toDate(form.tanggal_mulai)} onChange={(d) => set_field("tanggal_mulai", fromDate(d))} required disabled={Boolean(editing)} />
+            <Typography sx={{ mt: 0.5, fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Dasar masa kerja pegawai; tidak berubah saat ada SK baru.</Typography>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Bidang Keahlian (TA)" value={form.bidang_keahlian} onChange={(v: string) => set_field("bidang_keahlian", v)} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Kontrak Mulai" value={form.kontrak_mulai} onChange={(v: string) => set_field("kontrak_mulai", v)} type="date" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Kontrak Selesai" value={form.kontrak_selesai} onChange={(v: string) => set_field("kontrak_selesai", v)} type="date" />
-          </Grid>
+          {form.tipe_pegawai === "TA" && (
+            <>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Field label="Bidang Keahlian" value={form.bidang_keahlian} onChange={(v: string) => set_field("bidang_keahlian", v)} />
+              </Grid>
+              {editing && (
+                <>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <ThemedDatePicker label="Mulai Kontrak" value={toDate(form.kontrak_mulai)} onChange={(d) => set_field("kontrak_mulai", fromDate(d))} />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <ThemedDatePicker label="Kontrak Selesai" value={toDate(form.kontrak_selesai)} onChange={(d) => set_field("kontrak_selesai", fromDate(d))} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Kontrak mengikuti periode SK aktif. Ubah via menu SK untuk sinkronisasi otomatis.</Typography>
+                  </Grid>
+                </>
+              )}
+              {!editing && (
+                <Grid size={{ xs: 12 }}>
+                  <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", p: 1.5, bgcolor: "var(--muted)", borderRadius: 1 }}>
+                    Periode kontrak akan mengikuti tanggal mulai & selesai dari SK yang dibuat setelah pegawai ditambahkan.
+                  </Typography>
+                </Grid>
+              )}
+            </>
+          )}
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="Gaji/Honorarium Bulanan (Rp)" value={form.gaji_bulanan} onChange={(v: string) => set_field("gaji_bulanan", v)} type="number" />
           </Grid>
-          <Grid size={{ xs: 12 }}>
-            <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} placeholder="Pilih unit kerja..." />
-          </Grid>
+          {!editing && (
+            <Grid size={{ xs: 12 }}>
+              <SearchableSelect label="Unit Kerja Awal" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} />
+            </Grid>
+          )}
         </Grid>
       </Modal>
 
@@ -516,7 +549,7 @@ export function PegawaiPage() {
                       <Field label="Jabatan di Unit Baru" value={penempatan_form.jabatan} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, jabatan: v }))} />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 4 }}>
-                      <Field label="TMT" value={penempatan_form.tmt} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, tmt: v }))} type="date" required />
+                      <ThemedDatePicker label="TMT" value={toDate(penempatan_form.tmt)} onChange={(d) => set_penempatan_form((f: any) => ({ ...f, tmt: fromDate(d) }))} required />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 4 }}>
                       <Field label="No SK" value={penempatan_form.no_sk} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, no_sk: v }))} />

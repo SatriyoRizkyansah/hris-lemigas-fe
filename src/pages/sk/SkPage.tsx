@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Box, Grid, TextField, Typography } from "@mui/material";
+import { Box, Checkbox, FormControlLabel, Grid, TextField, Typography } from "@mui/material";
 import { AddOutlined, EditOutlined, DeleteOutlined, BlockOutlined, CheckCircleOutline } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
+import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip, ThemedDatePicker } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
@@ -24,6 +24,18 @@ function Field({ label, value, onChange, required, disabled, type }: any) {
   );
 }
 
+const toDate = (v: string): Date | null => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const fromDate = (d: Date | null): string => {
+  if (!d) return "";
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
 export function SkPage() {
   const can_edit = resolve_current_role() === "superadmin";
 
@@ -35,6 +47,7 @@ export function SkPage() {
   const [modal_open, set_modal_open] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
+  const [custom_effective_date, setCustomEffectiveDate] = useState(false);
   const [confirm_target, setConfirmTarget] = useState<any>(null);
   const [toggle_target, setToggleTarget] = useState<any>(null);
 
@@ -113,6 +126,7 @@ export function SkPage() {
 
   const open_create = () => {
     setEditing(null);
+    setCustomEffectiveDate(false);
     setForm({
       nomor_sk: "",
       tanggal_sk: "",
@@ -128,6 +142,7 @@ export function SkPage() {
 
   const open_edit = (row: any) => {
     setEditing(row);
+    setCustomEffectiveDate(to_date_input(row.tanggal_efektif) !== to_date_input(row.tanggal_sk));
     setForm({
       nomor_sk: row.nomor_sk ?? "",
       tanggal_sk: to_date_input(row.tanggal_sk),
@@ -142,13 +157,15 @@ export function SkPage() {
   };
 
   const submit = () => {
+    const tanggal_efektif = custom_effective_date ? form.tanggal_efektif : form.tanggal_sk;
+    if (!form.tanggal_sk || !tanggal_efektif) return;
     if (editing) {
       update_mutation([
         editing.id,
         {
           nomor_sk: form.nomor_sk,
           tanggal_sk: form.tanggal_sk,
-          tanggal_efektif: form.tanggal_efektif,
+          tanggal_efektif,
           tanggal_selesai: form.tanggal_selesai || undefined,
           id_unit_kerja: form.id_unit_kerja,
           jabatan: form.jabatan || undefined,
@@ -160,7 +177,7 @@ export function SkPage() {
         {
           nomor_sk: form.nomor_sk,
           tanggal_sk: form.tanggal_sk,
-          tanggal_efektif: form.tanggal_efektif,
+          tanggal_efektif,
           tanggal_selesai: form.tanggal_selesai || undefined,
           id_pegawai: form.id_pegawai,
           id_unit_kerja: form.id_unit_kerja,
@@ -306,31 +323,39 @@ export function SkPage() {
             <Field label="Nomor SK" value={form.nomor_sk} onChange={(v: string) => set_field("nomor_sk", v)} required />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Tanggal SK" value={form.tanggal_sk} onChange={(v: string) => set_field("tanggal_sk", v)} required type="date" />
+            <ThemedDatePicker label="Tanggal SK" value={toDate(form.tanggal_sk)} onChange={(d) => set_field("tanggal_sk", fromDate(d))} required />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Tanggal Efektif" value={form.tanggal_efektif} onChange={(v: string) => set_field("tanggal_efektif", v)} required type="date" />
+            <ThemedDatePicker label="Tanggal Selesai (opsional)" value={toDate(form.tanggal_selesai)} onChange={(d) => set_field("tanggal_selesai", fromDate(d))} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Tanggal Selesai" value={form.tanggal_selesai} onChange={(v: string) => set_field("tanggal_selesai", v)} type="date" />
+          <Grid size={{ xs: 12 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={custom_effective_date}
+                  onChange={(event) => {
+                    setCustomEffectiveDate(event.target.checked);
+                    if (!event.target.checked) set_field("tanggal_efektif", form.tanggal_sk);
+                  }}
+                />
+              }
+              label="Berlaku mulai tanggal berbeda dari tanggal SK"
+            />
+            <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Tanggal berlaku SK menentukan awal penugasan, bukan awal masa kerja pegawai.</Typography>
           </Grid>
+          {custom_effective_date && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <ThemedDatePicker label="Tanggal Mulai Berlaku" value={toDate(form.tanggal_efektif)} onChange={(d) => set_field("tanggal_efektif", fromDate(d))} required />
+            </Grid>
+          )}
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="Jabatan" value={form.jabatan} onChange={(v: string) => set_field("jabatan", v)} />
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <SearchableSelect
-              label="Pegawai"
-              value={String(form.id_pegawai ?? "")}
-              options={pegawai_options}
-              onChange={(v) => set_field("id_pegawai", v)}
-              loading={pegawai_query.is_loading}
-              placeholder="Pilih pegawai..."
-              disabled={Boolean(editing)}
-              required
-            />
+            <SearchableSelect label="Pegawai" value={String(form.id_pegawai ?? "")} options={pegawai_options} onChange={(v) => set_field("id_pegawai", v)} loading={pegawai_query.is_loading} disabled={Boolean(editing)} required />
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} placeholder="Pilih unit kerja..." required />
+            <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} required />
           </Grid>
           <Grid size={{ xs: 12 }}>
             <Field label="File SK (nama/tautan file)" value={form.file_sk} onChange={(v: string) => set_field("file_sk", v)} />
