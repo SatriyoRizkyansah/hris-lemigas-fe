@@ -49,8 +49,18 @@ function FileUploadInputComponent({ value, onChange, existingFileUrl, accept = "
     }
   }, [hasNewFile, hasExistingFile, onChange]);
 
-  const handlePreview = useCallback(() => {
-    if (existingFileUrl) window.open(`api/uploaded/${existingFileUrl}`, "_blank");
+  const handlePreview = useCallback(async () => {
+    if (!existingFileUrl) return;
+    try {
+      const response = await fetch(`/api/uploaded/${existingFileUrl}`);
+      if (!response.ok) throw new Error("File tidak ditemukan");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal membuka file");
+    }
   }, [existingFileUrl]);
 
   return (
