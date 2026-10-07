@@ -93,7 +93,7 @@ function SuperadminDashboard() {
   const dashboard_query = use_query({
     api_tag: "dashboard",
     api_method: "dashboardControllerGetSuperadminDashboard",
-    api_query: [{ tahun }],
+    api_query: [{ tahun }, { format: "json" } as any],
   });
 
   const body: any = dashboard_query.response ?? {};
@@ -150,7 +150,7 @@ function KoordinatorDashboard() {
   const dashboard_query = use_query({
     api_tag: "dashboard",
     api_method: "dashboardControllerGetKoordinatorUnitDashboard",
-    api_query: [],
+    api_query: [{ format: "json" } as any],
   });
 
   const body: any = dashboard_query.response ?? {};

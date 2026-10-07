@@ -90,19 +90,20 @@ export function AlokasiGajiPage() {
     pegawaiMap.set(p.id, p);
   });
   const selectedPegawai = form.id_pegawai ? pegawaiMap.get(form.id_pegawai) : null;
-  const rootKoordinatorId = selectedPegawai?.unit_kerja?.parent_unit_id ?? null;
+  const selectedUnit = selectedPegawai?.unit_kerja ?? null;
+  const rootKoordinatorId = selectedUnit?.tipe_unit === "KOORDINATOR" ? selectedUnit.id : (selectedUnit?.parent_unit_id ?? null);
 
   const ro_options_all = unwrap_list(ro_query.response).map((r: any) => ({
     value: String(r.id),
     label: `${r.kode_ro} — ${r.nama_ro}`,
-    unitKoordinatorId: r.unit_koordinator?.id ?? null,
+    unitKoordinatorId: r.unit_koordinator?.id ?? r.id_unit_koordinator ?? r.unit_koordinator_id ?? null,
   }));
   const ro_options = rootKoordinatorId ? ro_options_all.filter((o) => o.unitKoordinatorId === rootKoordinatorId) : [];
 
   const do_options_all = unwrap_list(do_query.response).map((d: any) => ({
     value: String(d.id),
     label: `${d.tahun_fiscal} — ${format_rupiah(d.total_plafon)} (${d.nama_unit_koordinator ?? "-"})`,
-    unitKoordinatorId: d.unit_koordinator?.id ?? null,
+    unitKoordinatorId: d.unit_koordinator?.id ?? d.id_unit_koordinator ?? d.unit_koordinator_id ?? null,
   }));
   const do_options = rootKoordinatorId ? do_options_all.filter((o) => o.unitKoordinatorId === rootKoordinatorId) : [];
 
@@ -342,16 +343,7 @@ export function AlokasiGajiPage() {
       >
         <Grid container spacing={2} sx={{ mt: 0.5 }}>
           <Grid size={{ xs: 12 }}>
-            <SearchableSelect
-              label="Pegawai (TA)"
-              value={String(form.id_pegawai ?? "")}
-              options={pegawai_options}
-              onChange={(v) => set_field("id_pegawai", v)}
-              loading={pegawai_query.is_loading}
-              placeholder="Pilih pegawai TA..."
-              disabled={Boolean(editing)}
-              required
-            />
+            <SearchableSelect label="Pegawai (TA)" value={String(form.id_pegawai ?? "")} options={pegawai_options} onChange={(v) => set_field("id_pegawai", v)} loading={pegawai_query.is_loading} disabled={Boolean(editing)} required />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <SearchableSelect label="Periode Bulan" value={String(form.periode_bulan ?? "")} options={BULAN_OPTIONS} onChange={(v) => set_field("periode_bulan", v)} disabled={Boolean(editing)} required />
@@ -367,19 +359,11 @@ export function AlokasiGajiPage() {
           </Grid>
           {form.sumber_dana === "RO" ? (
             <Grid size={{ xs: 12 }}>
-              <SearchableSelect label="Realisasi Organisasi (RO)" value={String(form.id_ro ?? "")} options={ro_options} onChange={(v) => set_field("id_ro", v)} loading={ro_query.is_loading} placeholder="Pilih RO..." required />
+              <SearchableSelect label="Realisasi Organisasi (RO)" value={String(form.id_ro ?? "")} options={ro_options} onChange={(v) => set_field("id_ro", v)} loading={ro_query.is_loading} required />
             </Grid>
           ) : (
             <Grid size={{ xs: 12 }}>
-              <SearchableSelect
-                label="Dana Operasional"
-                value={String(form.id_dana_operasional ?? "")}
-                options={do_options}
-                onChange={(v) => set_field("id_dana_operasional", v)}
-                loading={do_query.is_loading}
-                placeholder="Pilih dana operasional..."
-                required
-              />
+              <SearchableSelect label="Dana Operasional" value={String(form.id_dana_operasional ?? "")} options={do_options} onChange={(v) => set_field("id_dana_operasional", v)} loading={do_query.is_loading} required />
             </Grid>
           )}
           <Grid size={{ xs: 12 }}>

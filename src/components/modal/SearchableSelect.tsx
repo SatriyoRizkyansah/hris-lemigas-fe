@@ -118,7 +118,7 @@ const SearchHeader = memo(({ onSearchChange, onSearchKeyDown, onSearchClick }: {
 
 SearchHeader.displayName = "SearchHeader";
 
-function SearchableSelectComponent({ label, value, options, onChange, disabled = false, required = false, placeholder, loading = false, size = "small", fullWidth = true, error = false, helperText }: SearchableSelectProps) {
+function SearchableSelectComponent({ label, value, options, onChange, disabled = false, required = false, loading = false, size = "small", fullWidth = true, error = false, helperText }: SearchableSelectProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -292,7 +292,7 @@ function SearchableSelectComponent({ label, value, options, onChange, disabled =
               </Box>
             );
           }
-          return selectedDisplayValue || placeholder || "";
+          return selectedDisplayValue || "";
         }}
         MenuProps={{
           disableAutoFocusItem: true,
