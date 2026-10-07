@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Box, Grid, TextField, Typography } from "@mui/material";
-import { AddOutlined, EditOutlined } from "@mui/icons-material";
+import { Box, Grid, TextField, Typography, Chip, Divider } from "@mui/material";
+import { AddOutlined, EditOutlined, VisibilityOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
+import { ActionButton, ActionButtonGroup, ConfirmDialog, DataTable, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
-import { resolve_current_role, format_rupiah, to_date_input, status_variant, unwrap_list, unwrap_pagination, TIPE_PEGAWAI_OPTIONS, STATUS_AKTIF_OPTIONS } from "../../common/hris";
+import { resolve_current_role, format_rupiah, format_date, to_date_input, status_variant, unwrap_list, unwrap_pagination, TIPE_PEGAWAI_OPTIONS, STATUS_AKTIF_OPTIONS, TA_KATEGORI_OPTIONS } from "../../common/hris";
+import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
 function Field({ label, value, onChange, required, disabled, type, multiline }: any) {
   return (
@@ -40,6 +41,11 @@ export function PegawaiPage() {
   const [form, setForm] = useState<any>({});
   const [confirm_target, setConfirmTarget] = useState<any>(null);
 
+  const [detail_id, set_detail_id] = useState<string | null>(null);
+  const [detail_open, set_detail_open] = useState(false);
+  const [penempatan_form, set_penempatan_form] = useState<any>({ unit_kerja_id: "", jabatan: "", tmt: "", no_sk: "", keterangan: "" });
+  const [penempatan_loading, set_penempatan_loading] = useState(false);
+
   const list_query = use_query({
     api_tag: "masterPegawai",
     api_method: "pegawaiGetControllerGetData",
@@ -59,6 +65,13 @@ export function PegawaiPage() {
     api_method: "unitKerjaGetControllerGetData",
     api_query: [{ limit: 200 } as any],
   });
+
+  const detail_query = use_query({
+    api_tag: "masterPegawai" as any,
+    api_method: "pegawaiGetControllerGetDetail" as any,
+    api_query: [detail_id as any] as any,
+    should_running_if: Boolean(detail_id && detail_open),
+  } as any);
 
   const body: any = list_query.response ?? {};
   const rows: any[] = unwrap_list(body);
@@ -103,6 +116,7 @@ export function PegawaiPage() {
       nip_nik: "",
       nama: "",
       tipe_pegawai: "TA",
+      ta_kategori: "BIASA",
       jabatan: "",
       email: "",
       telepon: "",
@@ -117,12 +131,18 @@ export function PegawaiPage() {
     set_modal_open(true);
   };
 
+  const open_detail = (row: any) => {
+    set_detail_id(String(row.id));
+    set_detail_open(true);
+  };
+
   const open_edit = (row: any) => {
     setEditing(row);
     setForm({
       nip_nik: row.nip_nik ?? "",
       nama: row.nama ?? "",
       tipe_pegawai: row.tipe_pegawai ?? "TA",
+      ta_kategori: row.ta_kategori ?? "BIASA",
       jabatan: row.jabatan ?? "",
       email: row.email ?? "",
       telepon: row.telepon ?? "",
@@ -132,15 +152,44 @@ export function PegawaiPage() {
       kontrak_mulai: to_date_input(row.kontrak_mulai),
       kontrak_selesai: to_date_input(row.kontrak_selesai),
       gaji_bulanan: row.gaji_bulanan ?? "",
-      id_unit_kerja: row.id_unit_kerja ?? "",
+      id_unit_kerja: row.unit_kerja?.id ?? row.id_unit_kerja ?? "",
     });
     set_modal_open(true);
+  };
+
+  const submit_penempatan = async () => {
+    if (!detail_id || !penempatan_form.unit_kerja_id || !penempatan_form.tmt) return;
+    set_penempatan_loading(true);
+    try {
+      const token = auth_signal.value.selectedToken || auth_signal.value.data?.token || "";
+      const res = await fetch(`/api/pegawai/${detail_id}/penempatan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          unit_kerja_id: penempatan_form.unit_kerja_id,
+          jabatan: penempatan_form.jabatan || undefined,
+          tmt: penempatan_form.tmt,
+          no_sk: penempatan_form.no_sk || undefined,
+          keterangan: penempatan_form.keterangan || undefined,
+          is_homebase: true,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      set_penempatan_form({ unit_kerja_id: "", jabatan: "", tmt: "", no_sk: "", keterangan: "" });
+      (detail_query as any).call_back?.();
+      list_query.call_back();
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      set_penempatan_loading(false);
+    }
   };
 
   const submit = () => {
     const payload: any = {
       nama: form.nama,
       tipe_pegawai: form.tipe_pegawai,
+      ta_kategori: form.tipe_pegawai === "TA" ? form.ta_kategori || "BIASA" : undefined,
       jabatan: form.jabatan || undefined,
       email: form.email || undefined,
       telepon: form.telepon || undefined,
@@ -186,8 +235,26 @@ export function PegawaiPage() {
       width: 85,
       render: (_, row) => <StatusChip label={String(row.tipe_pegawai ?? "-")} variant={row.tipe_pegawai === "TA" ? "info" : "neutral"} size="small" />,
     },
+    {
+      id: "ta_kategori",
+      label: "Kategori TA",
+      width: 105,
+      hideMobile: true,
+      render: (_, row) =>
+        row.tipe_pegawai === "TA" ? (
+          <StatusChip label={row.ta_kategori === "RO" ? "TA RO" : "TA Biasa"} variant={row.ta_kategori === "RO" ? "warning" : "neutral"} size="small" />
+        ) : (
+          <Box sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>-</Box>
+        ),
+    },
     { id: "jabatan", label: "Jabatan", width: 170, render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.jabatan ?? "-")}</Box> },
-    { id: "nama_unit_kerja", label: "Unit Kerja", width: 170, hideMobile: true, render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.nama_unit_kerja ?? "-")}</Box> },
+    {
+      id: "nama_unit_kerja",
+      label: "Unit Kerja",
+      width: 170,
+      hideMobile: true,
+      render: (_, row) => <Box sx={{ wordBreak: "break-word", whiteSpace: "normal", lineHeight: 1.4 }}>{String(row.unit_kerja?.nama_unit ?? row.nama_unit_kerja ?? "-")}</Box>,
+    },
     {
       id: "gaji_bulanan",
       label: "Gaji/Bulan",
@@ -202,21 +269,18 @@ export function PegawaiPage() {
       width: 95,
       render: (_, row) => <StatusChip label={String(row.status_aktif ?? "-")} variant={status_variant(row.status_aktif)} size="small" />,
     },
-    ...(can_edit
-      ? [
-          {
-            id: "aksi",
-            label: "Aksi",
-            width: 75,
-            align: "right" as const,
-            render: (_: any, row: any) => (
-              <ActionButtonGroup>
-                <ActionButton variant="edit" title="Ubah" icon={<EditOutlined fontSize="small" />} onClick={() => open_edit(row)} />
-              </ActionButtonGroup>
-            ),
-          },
-        ]
-      : []),
+    {
+      id: "aksi",
+      label: "Aksi",
+      width: 110,
+      align: "right" as const,
+      render: (_: any, row: any) => (
+        <ActionButtonGroup>
+          <ActionButton variant="view" title="Detail & Riwayat Unit" icon={<VisibilityOutlined fontSize="small" />} onClick={() => open_detail(row)} />
+          {can_edit && <ActionButton variant="edit" title="Ubah" icon={<EditOutlined fontSize="small" />} onClick={() => open_edit(row)} />}
+        </ActionButtonGroup>
+      ),
+    },
   ];
 
   const filters = [
@@ -310,6 +374,11 @@ export function PegawaiPage() {
           <Grid size={{ xs: 12, sm: 6 }}>
             <SearchableSelect label="Status" value={String(form.status_aktif ?? "")} options={STATUS_AKTIF_OPTIONS} onChange={(v) => set_field("status_aktif", v)} />
           </Grid>
+          {form.tipe_pegawai === "TA" && (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <SearchableSelect label="Kategori TA" value={String(form.ta_kategori ?? "BIASA")} options={TA_KATEGORI_OPTIONS} onChange={(v) => set_field("ta_kategori", v)} />
+            </Grid>
+          )}
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="Jabatan" value={form.jabatan} onChange={(v: string) => set_field("jabatan", v)} />
           </Grid>
@@ -338,6 +407,134 @@ export function PegawaiPage() {
             <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} placeholder="Pilih unit kerja..." />
           </Grid>
         </Grid>
+      </Modal>
+
+      <Modal
+        open={detail_open}
+        onClose={() => {
+          set_detail_open(false);
+          set_detail_id(null);
+        }}
+        title={(() => {
+          const d: any = (detail_query as any).response?.data ?? (detail_query as any).response;
+          return d ? `Detail: ${d.nama} — ${d.nip_nik}` : "Detail Pegawai";
+        })()}
+        description="Riwayat penempatan unit kerja (homebase history) — tracking perpindahan unit."
+        maxWidth={900}
+        actions={[
+          {
+            label: "Tutup",
+            variant: "ghost",
+            onClick: () => {
+              set_detail_open(false);
+              set_detail_id(null);
+            },
+          },
+        ]}
+      >
+        {(() => {
+          const d: any = (detail_query as any).response?.data ?? (detail_query as any).response;
+          if ((detail_query as any).is_loading) return <InfoCard message="Memuat detail..." variant="info" />;
+          if (!d) return <InfoCard message="Pilih pegawai untuk melihat detail." variant="info" />;
+          const penempatan: any[] = d.riwayat_penempatan ?? [];
+          const current = penempatan.find((p: any) => p.is_homebase && p.status_aktif === "AKTIF") ?? penempatan[0];
+          return (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, p: 1.5, bgcolor: "var(--muted)", borderRadius: 2 }}>
+                <Box>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>NIP/NIK</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{d.nip_nik}</Typography>
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>Tipe</Typography>
+                  <StatusChip label={d.tipe_pegawai} variant={d.tipe_pegawai === "TA" ? "info" : "neutral"} size="small" />
+                </Box>
+                {d.tipe_pegawai === "TA" && (
+                  <Box>
+                    <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>Kategori</Typography>
+                    <StatusChip label={d.ta_kategori === "RO" ? "TA RO" : "TA Biasa"} variant={d.ta_kategori === "RO" ? "warning" : "neutral"} size="small" />
+                  </Box>
+                )}
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>Unit Aktif</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{current?.unit_kerja?.nama_unit ?? d.unit_kerja?.nama_unit ?? "-"}</Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>
+                    {current?.unit_kerja?.kode_unit ?? ""} {current?.jabatan ? `— ${current.jabatan}` : d.jabatan ? `— ${d.jabatan}` : ""}
+                  </Typography>
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>Status</Typography>
+                  <StatusChip label={d.status_aktif} variant={status_variant(d.status_aktif)} size="small" />
+                </Box>
+              </Box>
+
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>Riwayat Penempatan (Homebase History)</Typography>
+              <DataTable
+                columns={[
+                  {
+                    id: "unit",
+                    label: "Unit Kerja",
+                    width: 200,
+                    render: (_: any, r: any) => (
+                      <Box>
+                        <Typography sx={{ fontSize: "0.8rem", fontWeight: 600 }}>{r.unit_kerja?.nama_unit ?? "-"}</Typography>
+                        <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>
+                          {r.unit_kerja?.kode_unit ?? ""} — {r.unit_kerja?.tipe_unit ?? ""}
+                        </Typography>
+                      </Box>
+                    ),
+                  },
+                  { id: "jabatan", label: "Jabatan", width: 150, render: (_: any, r: any) => String(r.jabatan ?? "-") },
+                  { id: "tmt", label: "TMT", width: 110, render: (_: any, r: any) => format_date(r.tmt) },
+                  { id: "selesai", label: "Selesai", width: 110, render: (_: any, r: any) => (r.tanggal_selesai ? format_date(r.tanggal_selesai) : "-") },
+                  { id: "no_sk", label: "No SK", width: 140, render: (_: any, r: any) => <Box sx={{ wordBreak: "break-all", fontSize: "0.75rem" }}>{r.no_sk ?? "-"}</Box> },
+                  { id: "status", label: "Status", width: 90, render: (_: any, r: any) => <StatusChip label={r.status_aktif} variant={status_variant(r.status_aktif)} size="small" /> },
+                  { id: "homebase", label: "Homebase", width: 90, render: (_: any, r: any) => (r.is_homebase ? <Chip label="Ya" size="small" color="primary" /> : <Chip label="-" size="small" variant="outlined" />) },
+                  { id: "ket", label: "Keterangan", width: 150, render: (_: any, r: any) => String(r.keterangan ?? "-") },
+                ]}
+                data={penempatan}
+                emptyState={<Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>Belum ada riwayat penempatan.</Typography>}
+              />
+
+              {can_edit && (
+                <Box sx={{ p: 1.5, border: "1px solid var(--border)", borderRadius: 2 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", mb: 1.5 }}>Tambah Penempatan / Mutasi</Typography>
+                  <Grid container spacing={1.5}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <SearchableSelect
+                        label="Unit Kerja Tujuan"
+                        value={String(penempatan_form.unit_kerja_id ?? "")}
+                        options={unit_options}
+                        onChange={(v) => set_penempatan_form((f: any) => ({ ...f, unit_kerja_id: v }))}
+                        placeholder="Pilih unit..."
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Field label="Jabatan di Unit Baru" value={penempatan_form.jabatan} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, jabatan: v }))} />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Field label="TMT" value={penempatan_form.tmt} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, tmt: v }))} type="date" required />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Field label="No SK" value={penempatan_form.no_sk} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, no_sk: v }))} />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Field label="Keterangan" value={penempatan_form.keterangan} onChange={(v: string) => set_penempatan_form((f: any) => ({ ...f, keterangan: v }))} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <SoftButton onClick={submit_penempatan} disabled={!penempatan_form.unit_kerja_id || !penempatan_form.tmt || penempatan_loading}>
+                        {penempatan_loading ? "Menyimpan..." : "Simpan Penempatan"}
+                      </SoftButton>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+            </Box>
+          );
+        })()}
       </Modal>
 
       <ConfirmDialog

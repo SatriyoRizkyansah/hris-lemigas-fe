@@ -34,6 +34,33 @@ export interface LoginUserDto {
   akses: AksesItemDto[];
 }
 
+export interface CreatePenempatanDto {
+  /** Unit kerja tujuan */
+  unit_kerja_id: string;
+  /** @example "Analis Migas" */
+  jabatan?: string;
+  /** @example "2024-01-01" */
+  tmt: string;
+  /** @example "2025-12-31" */
+  tanggal_selesai?: string;
+  /** @example "SK/001/2024" */
+  no_sk?: string;
+  keterangan?: string;
+  /** @default true */
+  is_homebase?: boolean;
+}
+
+export interface UpdatePenempatanDto {
+  unit_kerja_id?: string;
+  jabatan?: string;
+  tmt?: string;
+  tanggal_selesai?: string;
+  no_sk?: string;
+  keterangan?: string;
+  status_aktif?: "AKTIF" | "NONAKTIF";
+  is_homebase?: boolean;
+}
+
 export interface StandartResponse {
   /** @example 200 */
   status: number;
@@ -65,6 +92,7 @@ export interface PegawaiItemDto {
   kontrak_mulai?: object | null;
   kontrak_selesai?: object | null;
   gaji_bulanan?: object | null;
+  ta_kategori?: string;
   unit_kerja?: UnitKerjaRingkasDto | null;
   /** @format date-time */
   created_at?: string;
@@ -86,6 +114,23 @@ export interface SkRiwayatItemDto {
   unit_kerja?: UnitKerjaRingkasDto;
 }
 
+export interface PenempatanItemDto {
+  id: string;
+  pegawai_id: string;
+  unit_kerja: UnitKerjaRingkasDto;
+  jabatan?: object | null;
+  /** @format date-time */
+  tmt: string;
+  tanggal_selesai?: object | null;
+  no_sk?: object | null;
+  file_sk?: object | null;
+  status_aktif: string;
+  is_homebase: boolean;
+  keterangan?: object | null;
+  /** @format date-time */
+  created_at: string;
+}
+
 export interface PegawaiDetailDto {
   id: string;
   nip_nik: string;
@@ -101,12 +146,14 @@ export interface PegawaiDetailDto {
   kontrak_mulai?: object | null;
   kontrak_selesai?: object | null;
   gaji_bulanan?: object | null;
+  ta_kategori?: string;
   unit_kerja?: UnitKerjaRingkasDto | null;
   /** @format date-time */
   created_at?: string;
   /** @format date-time */
   updated_at?: string;
   riwayat_sk: SkRiwayatItemDto[];
+  riwayat_penempatan: PenempatanItemDto[];
 }
 
 export interface StandartResponseCreate {
@@ -144,6 +191,11 @@ export interface CreatePegawaiDto {
    * @example 15000000
    */
   gaji_bulanan?: number;
+  /**
+   * Kategori TA: BIASA atau RO
+   * @default "BIASA"
+   */
+  ta_kategori?: "BIASA" | "RO";
   /** Unit kerja aktif */
   id_unit_kerja?: string;
 }
@@ -167,6 +219,7 @@ export interface UpdatePegawaiDto {
   kontrak_selesai?: string;
   /** @example 15000000 */
   gaji_bulanan?: number;
+  ta_kategori?: "BIASA" | "RO";
   id_unit_kerja?: string;
 }
 
@@ -266,6 +319,13 @@ export interface RoItemDto {
   nama_proyek?: object | null;
   id_unit_koordinator?: object | null;
   nama_unit_koordinator?: object | null;
+  no_kontrak?: object | null;
+  pj?: object | null;
+  file_rab?: object | null;
+  status_ro?: string;
+  no_sk?: object | null;
+  mulai_sk?: object | null;
+  berakhir_sk?: object | null;
   /** @format date-time */
   created_at?: string;
   /** @format date-time */
@@ -288,11 +348,52 @@ export interface CreateRoDto {
    * @example 500000000
    */
   total_plafon: number;
+  /** @example "KONTRAK/2026/001" */
+  no_kontrak?: string;
+  /** @example "Budi Santoso" */
+  pj?: string;
+  /** @example "SK-RO-001" */
+  no_sk?: string;
+  /** @example "2026-01-01" */
+  mulai_sk?: string;
+  /** @example "2026-12-31" */
+  berakhir_sk?: string;
+  /** @default "AKTIF" */
+  status_ro?: "AKTIF" | "NONAKTIF" | "SELESAI";
 }
 
 export interface UpdateRoDto {
   nama_ro?: string;
   total_plafon?: number;
+  no_kontrak?: string;
+  pj?: string;
+  no_sk?: string;
+  mulai_sk?: string;
+  berakhir_sk?: string;
+  status_ro?: "AKTIF" | "NONAKTIF" | "SELESAI";
+}
+
+export interface CreateRoTransaksiDto {
+  /** @example "Beli ATK" */
+  nama_kegiatan: string;
+  /** @example "KWT-001" */
+  no_kuitansi?: string;
+  /** @example "2026-01-15" */
+  tanggal: string;
+  /** @example 1500000 */
+  debit?: number;
+  /** @example 10000000 */
+  kredit?: number;
+  keterangan?: string;
+}
+
+export interface UpdateRoTransaksiDto {
+  nama_kegiatan?: string;
+  no_kuitansi?: string;
+  tanggal?: string;
+  debit?: number;
+  kredit?: number;
+  keterangan?: string;
 }
 
 export interface DanaOperasionalItemDto {
@@ -327,6 +428,29 @@ export interface UpdateDanaOperasionalDto {
    * @example 250000000
    */
   total_plafon?: number;
+}
+
+export interface CreateDanaTransaksiDto {
+  /** @example "Beli ATK" */
+  nama_kegiatan: string;
+  /** @example "KWT-001" */
+  no_kuitansi?: string;
+  /** @example "2026-01-15" */
+  tanggal: string;
+  /** @example 1500000 */
+  debit?: number;
+  /** @example 10000000 */
+  kredit?: number;
+  keterangan?: string;
+}
+
+export interface UpdateDanaTransaksiDto {
+  nama_kegiatan?: string;
+  no_kuitansi?: string;
+  tanggal?: string;
+  debit?: number;
+  kredit?: number;
+  keterangan?: string;
 }
 
 export interface SkItemDto {
@@ -816,6 +940,93 @@ export class Api<
       this.request<void, any>({
         path: `/api/auth/me`,
         method: "GET",
+        secure: true,
+        ...params,
+      }),
+  };
+  masterPegawaiPenempatan = {
+    /**
+     * No description
+     *
+     * @tags Master - Pegawai Penempatan
+     * @name PegawaiPenempatanControllerGetPenempatan
+     * @summary Get riwayat penempatan pegawai (Superadmin, Koordinator)
+     * @request GET:/api/pegawai/{id}/penempatan
+     * @secure
+     */
+    pegawaiPenempatanControllerGetPenempatan: (
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/pegawai/${id}/penempatan`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Pegawai Penempatan
+     * @name PegawaiPenempatanControllerCreatePenempatan
+     * @summary Tambah penempatan pegawai (Superadmin, Koordinator)
+     * @request POST:/api/pegawai/{id}/penempatan
+     * @secure
+     */
+    pegawaiPenempatanControllerCreatePenempatan: (
+      id: string,
+      data: CreatePenempatanDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/pegawai/${id}/penempatan`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Pegawai Penempatan
+     * @name PegawaiPenempatanControllerUpdatePenempatan
+     * @summary Update penempatan pegawai (Superadmin, Koordinator)
+     * @request PUT:/api/pegawai/penempatan/{penempatanId}
+     * @secure
+     */
+    pegawaiPenempatanControllerUpdatePenempatan: (
+      penempatanId: string,
+      data: UpdatePenempatanDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/pegawai/penempatan/${penempatanId}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Pegawai Penempatan
+     * @name PegawaiPenempatanControllerDeletePenempatan
+     * @summary Hapus penempatan pegawai (Superadmin)
+     * @request DELETE:/api/pegawai/penempatan/{penempatanId}
+     * @secure
+     */
+    pegawaiPenempatanControllerDeletePenempatan: (
+      penempatanId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/pegawai/penempatan/${penempatanId}`,
+        method: "DELETE",
         secure: true,
         ...params,
       }),
@@ -1399,6 +1610,109 @@ export class Api<
         secure: true,
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Master - RO
+     * @name RoControllerUploadRab
+     * @summary Upload RAB RO (Superadmin, Koordinator)
+     * @request POST:/api/ro/{id}/rab
+     * @secure
+     */
+    roControllerUploadRab: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/ro/${id}/rab`,
+        method: "POST",
+        secure: true,
+        ...params,
+      }),
+  };
+  masterRoTransaksi = {
+    /**
+     * No description
+     *
+     * @tags Master - RO Transaksi
+     * @name RoTransaksiControllerList
+     * @summary List transaksi RO (Superadmin, Koordinator)
+     * @request GET:/api/ro/{id}/transaksi
+     * @secure
+     */
+    roTransaksiControllerList: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/ro/${id}/transaksi`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - RO Transaksi
+     * @name RoTransaksiControllerCreate
+     * @summary Tambah transaksi RO (Superadmin, Koordinator)
+     * @request POST:/api/ro/{id}/transaksi
+     * @secure
+     */
+    roTransaksiControllerCreate: (
+      id: string,
+      data: CreateRoTransaksiDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/ro/${id}/transaksi`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - RO Transaksi
+     * @name RoTransaksiControllerUpdate
+     * @summary Update transaksi RO (Superadmin, Koordinator)
+     * @request PUT:/api/ro/{id}/transaksi/{tid}
+     * @secure
+     */
+    roTransaksiControllerUpdate: (
+      id: string,
+      tid: string,
+      data: UpdateRoTransaksiDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/ro/${id}/transaksi/${tid}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - RO Transaksi
+     * @name RoTransaksiControllerRemove
+     * @summary Hapus transaksi RO (Superadmin, Koordinator)
+     * @request DELETE:/api/ro/{id}/transaksi/{tid}
+     * @secure
+     */
+    roTransaksiControllerRemove: (
+      tid: string,
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/ro/${id}/transaksi/${tid}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
   };
   masterDanaOperasional = {
     /**
@@ -1544,6 +1858,92 @@ export class Api<
     danaOperasionalControllerRemove: (id: string, params: RequestParams = {}) =>
       this.request<void, void>({
         path: `/api/dana-operasional/${id}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+  };
+  masterDanaTransaksi = {
+    /**
+     * No description
+     *
+     * @tags Master - Dana Transaksi
+     * @name DanaTransaksiControllerList
+     * @summary List transaksi dana (Superadmin, Koordinator)
+     * @request GET:/api/dana-operasional/{id}/transaksi
+     * @secure
+     */
+    danaTransaksiControllerList: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/dana-operasional/${id}/transaksi`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Dana Transaksi
+     * @name DanaTransaksiControllerCreate
+     * @summary Tambah transaksi dana (Superadmin, Koordinator)
+     * @request POST:/api/dana-operasional/{id}/transaksi
+     * @secure
+     */
+    danaTransaksiControllerCreate: (
+      id: string,
+      data: CreateDanaTransaksiDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/dana-operasional/${id}/transaksi`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Dana Transaksi
+     * @name DanaTransaksiControllerUpdate
+     * @summary Update transaksi dana (Superadmin, Koordinator)
+     * @request PUT:/api/dana-operasional/{id}/transaksi/{tid}
+     * @secure
+     */
+    danaTransaksiControllerUpdate: (
+      tid: string,
+      id: string,
+      data: UpdateDanaTransaksiDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/dana-operasional/${id}/transaksi/${tid}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Dana Transaksi
+     * @name DanaTransaksiControllerRemove
+     * @summary Hapus transaksi dana (Superadmin, Koordinator)
+     * @request DELETE:/api/dana-operasional/{id}/transaksi/{tid}
+     * @secure
+     */
+    danaTransaksiControllerRemove: (
+      tid: string,
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/dana-operasional/${id}/transaksi/${tid}`,
         method: "DELETE",
         secure: true,
         ...params,

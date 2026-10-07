@@ -271,8 +271,8 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
             )
           ) : (
             /* ─── DESKTOP: normal table ─── */
-            <TableContainer>
-              <Table size={compact ? "small" : "medium"} sx={{ minWidth: 700, tableLayout: "fixed" }}>
+            <TableContainer sx={{ overflowX: "auto" }}>
+              <Table size={compact ? "small" : "medium"} sx={{ minWidth: 900, tableLayout: "fixed" }}>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "color-mix(in srgb, var(--muted) 75%, transparent)", "& th": { borderColor: "var(--border)" } }}>
                     {columns.map((column) => (
@@ -284,12 +284,13 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                           color: "var(--foreground)",
                           width: column.width,
                           maxWidth: column.width,
+                          minWidth: column.width ?? 80,
                           backgroundColor: "var(--muted)",
                           borderColor: "var(--border)",
-                          wordBreak: "break-word",
-                          overflowWrap: "anywhere",
-                          whiteSpace: "normal",
-                          verticalAlign: "top",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          verticalAlign: "middle",
                         }}
                       >
                         {column.label}
@@ -329,10 +330,10 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                               sx={{
                                 width: column.width,
                                 maxWidth: column.width,
-                                wordBreak: "break-word",
-                                overflowWrap: "anywhere",
-                                whiteSpace: "normal",
-                                verticalAlign: "top",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                verticalAlign: "middle",
                               }}
                             >
                               {column.render ? column.render(row[column.id], row) : String(row[column.id])}

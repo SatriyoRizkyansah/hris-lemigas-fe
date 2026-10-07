@@ -243,7 +243,7 @@ export const ServerDataTable = <T extends Record<string, any>>({
               ) : (
                 /* ─── DESKTOP: normal table ─── */
                 <Fade in={!isLoading} timeout={300}>
-                  <Table size={compact ? "small" : "medium"} sx={{ minWidth: 700, tableLayout: "fixed" }}>
+                  <Table size={compact ? "small" : "medium"} sx={{ minWidth: 1200, tableLayout: "fixed" }}>
                     <TableHead sx={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "var(--muted)" }}>
                       <TableRow
                         sx={{
@@ -263,13 +263,14 @@ export const ServerDataTable = <T extends Record<string, any>>({
                               fontSize: "0.75rem",
                               width: column.width,
                               maxWidth: column.width,
+                              minWidth: column.width ?? 80,
                               textTransform: "uppercase",
                               letterSpacing: "0.05em",
                               backgroundColor: "var(--muted)",
-                              wordBreak: "break-word",
-                              overflowWrap: "anywhere",
-                              whiteSpace: "normal",
-                              verticalAlign: "top",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              verticalAlign: "middle",
                             }}
                           >
                             {column.label}
@@ -314,10 +315,10 @@ export const ServerDataTable = <T extends Record<string, any>>({
                                   sx={{
                                     width: column.width,
                                     maxWidth: column.width,
-                                    wordBreak: "break-word",
-                                    overflowWrap: "anywhere",
-                                    whiteSpace: "normal",
-                                    verticalAlign: "top",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    verticalAlign: "middle",
                                   }}
                                 >
                                   {column.render ? column.render(row[column.id] as any, row) : String(row[column.id] ?? "-")}

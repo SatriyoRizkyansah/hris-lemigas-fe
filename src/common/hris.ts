@@ -57,6 +57,17 @@ export const TIPE_PEGAWAI_OPTIONS = [
   { label: "TA", value: "TA" },
 ];
 
+export const TA_KATEGORI_OPTIONS = [
+  { label: "TA Biasa", value: "BIASA" },
+  { label: "TA RO", value: "RO" },
+];
+
+export const STATUS_RO_OPTIONS = [
+  { label: "Aktif", value: "AKTIF" },
+  { label: "Nonaktif", value: "NONAKTIF" },
+  { label: "Selesai", value: "SELESAI" },
+];
+
 export const TIPE_UNIT_OPTIONS = [
   { label: "Koordinator", value: "KOORDINATOR" },
   { label: "Sub Koordinator", value: "SUB_KOORDINATOR" },
