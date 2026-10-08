@@ -48,11 +48,16 @@ const VARIANT_STYLES: Record<ActionButtonVariant, { color: string; hoverBg: stri
 export function ActionButton({ variant = "default", title, icon, onClick, disabled = false, size = "small", sx }: ActionButtonProps) {
   const variantStyle = VARIANT_STYLES[variant];
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick();
+  };
+
   return (
     <Tooltip title={title}>
       <IconButton
         size={size}
-        onClick={onClick}
+        onClick={handleClick}
         disabled={disabled}
         sx={{
           border: "1px solid var(--border)",

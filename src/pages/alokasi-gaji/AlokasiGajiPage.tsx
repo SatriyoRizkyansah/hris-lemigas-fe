@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Grid, TextField, Typography } from "@mui/material";
 import { AddOutlined, EditOutlined, BlockOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
@@ -41,6 +41,17 @@ export function AlokasiGajiPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [confirm_target, setConfirmTarget] = useState<any>(null);
+  const [sk_autofill, set_sk_autofill] = useState<any>(null); // SK aktif pegawai terpilih
+  const autofill_applied = useRef(false); // guard agar tidak override saat edit
+
+  // Fetch SK aktif saat pegawai dipilih (hanya mode create)
+  const sk_query = use_query({
+    api_tag: "sk",
+    api_method: "skGetControllerGetRiwayat",
+    api_query: [form.id_pegawai || "", { status_aktif: "AKTIF", limit: 5 }],
+    should_running_if: Boolean(form.id_pegawai) && !editing,
+    options: { should_disable_error_message: true },
+  });
 
   const list_query = use_query({
     api_tag: "alokasiGajiTa",
@@ -111,14 +122,52 @@ export function AlokasiGajiPage() {
     setForm((f: any) => ({ ...f, [key]: value }));
   };
 
-  // Reset dependent fields when pegawai or tahun changes
+  // Auto-fill dari SK aktif ketika pegawai dipilih (create mode only)
+  useEffect(() => {
+    if (editing || !form.id_pegawai) return;
+    const sk_list = unwrap_list(sk_query.response);
+    // Prioritaskan SK homebase aktif
+    const active_sk = sk_list.find((s: any) => s.is_homebase) ?? sk_list[0] ?? null;
+    if (!active_sk) {
+      set_sk_autofill(null);
+      return;
+    }
+    if (!autofill_applied.current) {
+      autofill_applied.current = true;
+      set_sk_autofill(active_sk);
+      setForm((f: any) => ({
+        ...f,
+        jumlah: active_sk.gaji_bulanan ? String(active_sk.gaji_bulanan) : f.jumlah,
+        sumber_dana: active_sk.sumber_dana_default ?? f.sumber_dana ?? "RO",
+        id_ro: active_sk.ro_id_default ?? f.id_ro ?? "",
+        id_dana_operasional: active_sk.dana_operasional_id_default ?? f.id_dana_operasional ?? "",
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sk_query.response]);
+
+  // Reset autofill guard + dependent fields saat pegawai berubah
+  useEffect(() => {
+    if (editing) return;
+    autofill_applied.current = false;
+    set_sk_autofill(null);
+    setForm((f: any) => ({
+      ...f,
+      jumlah: "",
+      id_ro: "",
+      id_dana_operasional: "",
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.id_pegawai]);
+
+  // Reset RO/DO saat tahun berubah
   useEffect(() => {
     setForm((f: any) => ({
       ...f,
       id_ro: "",
       id_dana_operasional: "",
     }));
-  }, [form.id_pegawai, form.periode_tahun]);
+  }, [form.periode_tahun]);
 
   const create_mutation = use_mutation({
     api_tag: "alokasiGajiTa",
@@ -146,6 +195,8 @@ export function AlokasiGajiPage() {
 
   const open_create = () => {
     setEditing(null);
+    autofill_applied.current = false;
+    set_sk_autofill(null);
     setForm({
       id_pegawai: "",
       periode_bulan: bulan || String(current_month()),
@@ -355,7 +406,21 @@ export function AlokasiGajiPage() {
             <SearchableSelect label="Sumber Dana" value={String(form.sumber_dana ?? "RO")} options={SUMBER_DANA_OPTIONS} onChange={(v) => set_field("sumber_dana", v)} required />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Jumlah (Rp)" value={form.jumlah} onChange={(v: string) => set_field("jumlah", v)} required type="number" />
+            <TextField
+              label="Jumlah (Rp)"
+              size="small"
+              fullWidth
+              required
+              type="number"
+              value={form.jumlah ?? ""}
+              onChange={(e) => set_field("jumlah", e.target.value)}
+              helperText={
+                sk_autofill?.gaji_bulanan && !editing
+                  ? `Dari SK ${sk_autofill.nomor_sk ?? ""}: ${format_rupiah(sk_autofill.gaji_bulanan)}`
+                  : undefined
+              }
+              slotProps={{ formHelperText: { sx: { color: "var(--muted-foreground)", fontSize: "0.72rem", ml: 0 } } }}
+            />
           </Grid>
           {form.sumber_dana === "RO" ? (
             <Grid size={{ xs: 12 }}>
