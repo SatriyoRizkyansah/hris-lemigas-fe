@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Box, Grid, TextField, Typography, Divider, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { Box, Grid, TextField, Typography } from "@mui/material";
 import { AddOutlined, EditOutlined, DeleteOutlined, VisibilityOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, ConfirmDialog, DataTable, FileUploadInput, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
+import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
 import { resolve_current_role, current_year, format_rupiah, format_date, status_variant, unwrap_list, unwrap_pagination, STATUS_RO_OPTIONS } from "../../common/hris";
-import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
 function Field({ label, value, onChange, required, disabled, type }: any) {
   return (
@@ -26,8 +26,8 @@ function Field({ label, value, onChange, required, disabled, type }: any) {
 }
 
 export function RoPage() {
+  const navigate = useNavigate();
   const can_edit = resolve_current_role() === "superadmin";
-  const can_manage_ledger = can_edit || resolve_current_role() === "koordinator";
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -40,27 +40,11 @@ export function RoPage() {
   const [form, setForm] = useState<any>({});
   const [confirm_target, setConfirmTarget] = useState<any>(null);
 
-  // detail
-  const [detail_id, setDetailId] = useState<string | null>(null);
-  const [detail_open, setDetailOpen] = useState(false);
-  const [rab_file, setRabFile] = useState<File | null>(null);
-  const [rab_uploading, setRabUploading] = useState(false);
-  const [trx_modal_open, setTrxModalOpen] = useState(false);
-  const [trx_form, setTrxForm] = useState<any>({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
-  const [trx_editing, setTrxEditing] = useState<any>(null);
-
   const list_query = use_query({
     api_tag: "masterRo",
     api_method: "roControllerGetData",
     api_query: [{ query: search || undefined, page: page + 1, limit: rows_per_page, id_proyek: id_proyek || undefined, id_unit_koordinator: id_unit || undefined } as any],
   });
-
-  const detail_query = use_query({
-    api_tag: "masterRo",
-    api_method: "roControllerGetDetail",
-    api_query: [detail_id as any] as any,
-    should_running_if: Boolean(detail_id),
-  } as any);
 
   const proyek_query = use_query({ api_tag: "masterProyek", api_method: "proyekControllerGetData", api_query: [{ limit: 200 } as any] });
   const unit_query = use_query({ api_tag: "masterUnitKerja", api_method: "unitKerjaGetControllerGetData", api_query: [{ tipe_unit: "KOORDINATOR", limit: 200 } as any] });
@@ -79,10 +63,7 @@ export function RoPage() {
     api_tag: "masterRo",
     api_method: "roControllerUpdate",
     options: {
-      call_back: () => {
-        list_query.call_back();
-        if (detail_id) detail_query.call_back();
-      },
+      call_back: () => list_query.call_back(),
       will_exec_after_success: () => set_modal_open(false),
     },
   });
@@ -147,73 +128,7 @@ export function RoPage() {
   };
 
   const open_detail = (row: any) => {
-    setDetailId(String(row.id));
-    setDetailOpen(true);
-  };
-
-  const detail: any = (detail_query.response as any)?.data ?? (detail_query.response as any) ?? null;
-  // unwrap detail: api returns { data: { ... } } or { data: { data: ... } }
-  const d = detail?.data ?? detail;
-  const ledger: any[] = d?.transaksi_list ?? d?.list ?? [];
-  const total_debit = d?.total_debit ?? ledger.reduce((s: number, r: any) => s + Number(r.debit ?? 0), 0);
-  const total_kredit = d?.total_kredit ?? ledger.reduce((s: number, r: any) => s + Number(r.kredit ?? 0), 0);
-  const saldo_ledger = d?.saldo_ledger ?? total_kredit - total_debit;
-  const alokasi_list: any[] = d?.alokasi_list ?? [];
-
-  const handle_rab_upload = async () => {
-    if (!detail_id || !rab_file) return;
-    setRabUploading(true);
-    try {
-      const token = auth_signal.value.selectedToken || "";
-      const fd = new FormData();
-      fd.append("file", rab_file);
-      const res = await fetch(`/api/ro/${detail_id}/rab`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
-      if (!res.ok) throw new Error(await res.text());
-      setRabFile(null);
-      detail_query.call_back();
-      list_query.call_back();
-    } catch (e: any) {
-      alert(e?.message ?? "Gagal upload RAB");
-    } finally {
-      setRabUploading(false);
-    }
-  };
-
-  const handle_trx_submit = async () => {
-    if (!detail_id) return;
-    const token = auth_signal.value.selectedToken || "";
-    const payload: any = {
-      nama_kegiatan: trx_form.nama_kegiatan,
-      no_kuitansi: trx_form.no_kuitansi || undefined,
-      tanggal: trx_form.tanggal,
-      debit: Number(trx_form.debit) || 0,
-      kredit: Number(trx_form.kredit) || 0,
-      keterangan: trx_form.keterangan || undefined,
-    };
-    const url = trx_editing ? `/api/ro/${detail_id}/transaksi/${trx_editing.id}` : `/api/ro/${detail_id}/transaksi`;
-    const method = trx_editing ? "PUT" : "POST";
-    try {
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(await res.text());
-      setTrxModalOpen(false);
-      setTrxEditing(null);
-      setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
-      detail_query.call_back();
-    } catch (e: any) {
-      alert(e?.message ?? "Gagal simpan transaksi");
-    }
-  };
-
-  const handle_trx_delete = async (tid: string) => {
-    if (!detail_id || !confirm("Hapus transaksi ini?")) return;
-    const token = auth_signal.value.selectedToken || "";
-    try {
-      const res = await fetch(`/api/ro/${detail_id}/transaksi/${tid}`, { method: "DELETE", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      if (!res.ok) throw new Error(await res.text());
-      detail_query.call_back();
-    } catch (e: any) {
-      alert(e?.message ?? "Gagal hapus transaksi");
-    }
+    navigate(`/ro/${row.id}`);
   };
 
   const columns: Column<any>[] = [
@@ -265,49 +180,6 @@ export function RoPage() {
         </ActionButtonGroup>
       ),
     },
-  ];
-
-  const ledger_columns: Column<any>[] = [
-    { id: "no", label: "No", width: 56, render: (_: any, _r: any, idx?: number) => String((idx ?? 0) + 1) },
-    { id: "nama_kegiatan", label: "Nama Kegiatan", width: 220, render: (_: any, r: any) => <Box sx={{ fontSize: "0.82rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.nama_kegiatan ?? "-")}</Box> },
-    { id: "no_kuitansi", label: "No Kuitansi", width: 140, render: (_: any, r: any) => <Box sx={{ fontSize: "0.8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.no_kuitansi ?? "-")}</Box> },
-    { id: "tanggal", label: "Tanggal", width: 110, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap" }}>{format_date(r.tanggal)}</Box> },
-    { id: "debit", label: "Debit", align: "right", width: 130, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap" }}>{Number(r.debit) ? format_rupiah(r.debit) : "-"}</Box> },
-    { id: "kredit", label: "Kredit", align: "right", width: 130, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap" }}>{Number(r.kredit) ? format_rupiah(r.kredit) : "-"}</Box> },
-    { id: "saldo", label: "Saldo", align: "right", width: 130, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600 }}>{format_rupiah(r.saldo ?? r.saldo_ledger ?? 0)}</Box> },
-    { id: "keterangan", label: "Keterangan", width: 180, render: (_: any, r: any) => <Box sx={{ fontSize: "0.8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.keterangan ?? "-")}</Box> },
-    ...(can_manage_ledger
-      ? [
-          {
-            id: "aksi_trx",
-            label: "Aksi",
-            align: "right" as const,
-            width: 90,
-            render: (_: any, r: any) => (
-              <ActionButtonGroup>
-                <ActionButton
-                  variant="edit"
-                  title="Ubah"
-                  icon={<EditOutlined fontSize="small" />}
-                  onClick={() => {
-                    setTrxEditing(r);
-                    setTrxForm({
-                      nama_kegiatan: r.nama_kegiatan ?? "",
-                      no_kuitansi: r.no_kuitansi ?? "",
-                      tanggal: String(r.tanggal ?? "").slice(0, 10),
-                      debit: String(r.debit ?? ""),
-                      kredit: String(r.kredit ?? ""),
-                      keterangan: r.keterangan ?? "",
-                    });
-                    setTrxModalOpen(true);
-                  }}
-                />
-                <ActionButton variant="delete" title="Hapus" icon={<DeleteOutlined fontSize="small" />} onClick={() => handle_trx_delete(r.id)} />
-              </ActionButtonGroup>
-            ),
-          } as any,
-        ]
-      : []),
   ];
 
   return (
@@ -435,177 +307,6 @@ export function RoPage() {
           </Grid>
           <Grid size={{ xs: 12 }}>
             <Field label="Total Plafon (Rp)" value={form.total_plafon} onChange={(v: string) => set_field("total_plafon", v)} required type="number" />
-          </Grid>
-        </Grid>
-      </Modal>
-
-      <Modal
-        open={detail_open}
-        onClose={() => {
-          setDetailOpen(false);
-          setDetailId(null);
-        }}
-        title={d ? `Detail RO: ${d.nama_ro ?? "-"}` : "Detail RO"}
-        description="Rincian dana RO, RAB, dan aliran dana."
-        maxWidth={1100}
-        actions={[
-          {
-            label: "Tutup",
-            variant: "ghost",
-            onClick: () => {
-              setDetailOpen(false);
-              setDetailId(null);
-            },
-          },
-        ]}
-      >
-        {!d ? (
-          <InfoCard message="Memuat detail..." variant="info" />
-        ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, pb: 1 }}>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2, p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--muted)" }}>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>NAMA RO</Typography>
-                <Typography sx={{ fontSize: "0.9rem", fontWeight: 700 }}>{String(d.nama_ro ?? "-")}</Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>NO. KONTRAK</Typography>
-                <Typography sx={{ fontSize: "0.85rem" }}>{String(d.no_kontrak ?? "-")}</Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>KOOR</Typography>
-                <Typography sx={{ fontSize: "0.85rem" }}>{String(d.nama_unit_koordinator ?? d.unit_koordinator?.nama_unit ?? "-")}</Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>PJ</Typography>
-                <Typography sx={{ fontSize: "0.85rem" }}>{String(d.pj ?? "-")}</Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>ANGGARAN</Typography>
-                <Typography sx={{ fontSize: "0.85rem", fontWeight: 700 }}>{format_rupiah(d.total_plafon)}</Typography>
-                <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>
-                  Terpakai {format_rupiah(d.total_terpakai)} · Sisa {format_rupiah(d.sisa_saldo)}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>STATUS / SK</Typography>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                  <StatusChip label={String(d.status_ro ?? "AKTIF")} variant={status_variant(d.status_ro)} size="small" />
-                  <Typography sx={{ fontSize: "0.78rem" }}>{String(d.no_sk ?? "-")}</Typography>
-                </Stack>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
-                  {format_date(d.mulai_sk)} — {format_date(d.berakhir_sk)}
-                </Typography>
-              </Box>
-              <Box sx={{ gridColumn: { sm: "1 / span 2" }, pt: 1, mt: 0.5, borderTop: "1px solid var(--border)" }}>
-                <FileUploadInput label="DOKUMEN RAB" value={rab_file} onChange={setRabFile} existingFileUrl={d.file_rab ?? null} accept=".pdf,.xlsx,.xls" disabled={!can_manage_ledger} />
-                {can_manage_ledger && rab_file && (
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                    <SoftButton size="small" disabled={rab_uploading} onClick={handle_rab_upload}>
-                      {rab_uploading ? "Mengunggah..." : "Upload RAB"}
-                    </SoftButton>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-
-            <Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: "0.95rem" }}>Ledger Dana RO</Typography>
-                {can_manage_ledger && (
-                  <SoftButton
-                    size="small"
-                    startIcon={<AddOutlined />}
-                    onClick={() => {
-                      setTrxEditing(null);
-                      setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: new Date().toISOString().slice(0, 10), debit: "", kredit: "", keterangan: "" });
-                      setTrxModalOpen(true);
-                    }}
-                  >
-                    Tambah Transaksi
-                  </SoftButton>
-                )}
-              </Box>
-              <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, overflow: "hidden" }}>
-                <DataTable
-                  columns={ledger_columns}
-                  data={ledger}
-                  title=""
-                  hideSearch
-                  hidePagination
-                  emptyState={<Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center", display: "block" }}>Belum ada transaksi ledger.</Typography>}
-                />
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 3, mt: 1.5, p: 1.5, border: "1px solid var(--border)", borderRadius: 1, bgcolor: "var(--card)", flexWrap: "wrap" }}>
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TOTAL DEBIT</Typography>
-                  <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, color: "#dc2626" }}>{format_rupiah(total_debit)}</Typography>
-                </Box>
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TOTAL KREDIT</Typography>
-                  <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, color: "#16a34a" }}>{format_rupiah(total_kredit)}</Typography>
-                </Box>
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>SALDO</Typography>
-                  <Typography sx={{ fontSize: "0.9rem", fontWeight: 800 }}>{format_rupiah(saldo_ledger)}</Typography>
-                </Box>
-              </Box>
-            </Box>
-
-            <Divider />
-            <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1 }}>Alokasi Gaji TA (dari RO ini)</Typography>
-              {alokasi_list.length === 0 ? (
-                <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Belum ada alokasi gaji TA untuk RO ini.</Typography>
-              ) : (
-                <Box sx={{ border: "1px solid var(--border)", borderRadius: 1, overflow: "hidden" }}>
-                  {alokasi_list.map((a: any) => (
-                    <Box key={a.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 1, borderBottom: "1px solid var(--border)", "&:last-child": { borderBottom: 0 } }}>
-                      <Box>
-                        <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{String(a.pegawai?.nama ?? a.pegawai_id ?? "-")}</Typography>
-                        <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
-                          {String(a.pegawai?.nip_nik ?? "")} · {String(a.periode_bulan ?? "")}/{String(a.periode_tahun ?? "")}
-                        </Typography>
-                      </Box>
-                      <Typography sx={{ fontSize: "0.85rem", fontWeight: 700 }}>{format_rupiah(a.jumlah)}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )}
-      </Modal>
-
-      <Modal
-        open={trx_modal_open}
-        onClose={() => setTrxModalOpen(false)}
-        title={trx_editing ? "Ubah Transaksi" : "Tambah Transaksi"}
-        description="Isi debit untuk pengeluaran, kredit untuk uang masuk."
-        maxWidth={600}
-        actions={[
-          { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false) },
-          { label: trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit },
-        ]}
-      >
-        <Grid container spacing={2} sx={{ mt: 0.5, pt: 1 }}>
-          <Grid size={{ xs: 12 }}>
-            <Field label="Nama Kegiatan" value={trx_form.nama_kegiatan} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, nama_kegiatan: v }))} required />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="No Kuitansi" value={trx_form.no_kuitansi} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, no_kuitansi: v }))} />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Tanggal" value={trx_form.tanggal} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, tanggal: v }))} type="date" required />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Debit (Rp)" value={trx_form.debit} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, debit: v }))} type="number" />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Kredit (Rp)" value={trx_form.kredit} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, kredit: v }))} type="number" />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Field label="Keterangan" value={trx_form.keterangan} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, keterangan: v }))} />
           </Grid>
         </Grid>
       </Modal>

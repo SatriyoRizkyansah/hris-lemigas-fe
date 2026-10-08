@@ -11,6 +11,7 @@ const PegawaiPage = lazy(() => import("../pages/master-pegawai/PegawaiPage"));
 const UnitKerjaPage = lazy(() => import("../pages/master-unit/UnitKerjaPage"));
 const ProyekPage = lazy(() => import("../pages/master-proyek/ProyekPage"));
 const RoPage = lazy(() => import("../pages/master-ro/RoPage"));
+const RoDetailPage = lazy(() => import("../pages/master-ro/RoDetailPage"));
 const DanaOperasionalPage = lazy(() => import("../pages/master-dana-operasional/DanaOperasionalPage"));
 const SkPage = lazy(() => import("../pages/sk/SkPage"));
 const AlokasiGajiPage = lazy(() => import("../pages/alokasi-gaji/AlokasiGajiPage"));
@@ -93,6 +94,14 @@ export function AppRoutes() {
             element={
               <RequireRole roles={SUPERADMIN_KOORDINATOR}>
                 <RoPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/ro/:id"
+            element={
+              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+                <RoDetailPage />
               </RequireRole>
             }
           />
