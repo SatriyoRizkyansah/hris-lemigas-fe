@@ -2326,10 +2326,34 @@ export class Api<
      * @secure
      */
     dashboardControllerGetKoordinatorUnitDashboard: (
+      query?: {
+        /** @example 2026 */
+        tahun?: number;
+        /** UUID unit koordinator (wajib untuk Superadmin) */
+        id_unit_koordinator?: string;
+      },
       params: RequestParams = {},
     ) =>
       this.request<void, any>({
         path: `/api/dashboard/koordinator-unit`,
+        method: "GET",
+        query: query,
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Dashboard
+     * @name DashboardControllerGetSkExpiringSoon
+     * @summary SK yang masa berlakunya hampir habis (30 hari) (Superadmin)
+     * @request GET:/api/dashboard/sk-expiring-soon
+     * @secure
+     */
+    dashboardControllerGetSkExpiringSoon: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/dashboard/sk-expiring-soon`,
         method: "GET",
         secure: true,
         ...params,
