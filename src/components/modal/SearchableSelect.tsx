@@ -267,7 +267,7 @@ function SearchableSelectComponent({ label, value, options, onChange, disabled =
 
   return (
     <FormControl fullWidth={fullWidth} size={size} disabled={disabled} error={error}>
-      <InputLabel shrink={isOpen || Boolean(value)}>
+      <InputLabel shrink={isOpen || Boolean(value) || Boolean(selectedDisplayValue)}>
         {label}
         {required && (
           <Box component="span" sx={{ color: "var(--danger, #dc2626)", ml: 0.5, fontWeight: 700 }}>

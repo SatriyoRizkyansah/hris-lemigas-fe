@@ -545,6 +545,19 @@ export interface UpdateAlokasiDto {
   keterangan?: string;
 }
 
+export interface RekapItemDto {
+  id_pegawai: string;
+  nama_pegawai: string;
+  nip_nik?: object | null;
+  nama_unit_kerja?: object | null;
+  gaji_bulanan: number;
+  total_alokasi: number;
+  alokasi_ro: number;
+  alokasi_operasional: number;
+  sisa_gaji: number;
+  detail?: AlokasiItemDto[];
+}
+
 export interface UserItemDto {
   id: string;
   email: string;
@@ -2251,11 +2264,17 @@ export class Api<
       },
       params: RequestParams = {},
     ) =>
-      this.request<void, any>({
+      this.request<
+        StandartResponse & {
+          data?: RekapItemDto[];
+        },
+        void
+      >({
         path: `/api/alokasi-gaji/rekap`,
         method: "GET",
         query: query,
         secure: true,
+        format: "json",
         ...params,
       }),
 

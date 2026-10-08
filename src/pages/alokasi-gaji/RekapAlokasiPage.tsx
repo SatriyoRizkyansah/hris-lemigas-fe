@@ -1,13 +1,18 @@
 import { useState } from "react";
-import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
+import { Box, Divider, Grid, Typography } from "@mui/material";
 import { DownloadOutlined, RefreshOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { InfoCard, Modal, SoftButton, TableSkeleton, DataTable } from "../../components";
+import { InfoCard, Modal, SoftButton, TableSkeleton, DataTable, SearchableSelect, StatusChip } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 import { show_alert_snackbar } from "@Signal/use-signal/snackbar_signal";
 import { resolve_current_role, current_year, current_month, format_rupiah, format_date, BULAN_OPTIONS, unwrap_list } from "../../common/hris";
+
+const TAHUN_OPTIONS = Array.from({ length: 5 }, (_, i) => {
+  const y = String(current_year() - i);
+  return { label: y, value: y };
+});
 
 export function RekapAlokasiPage() {
   const role = resolve_current_role();
@@ -35,9 +40,18 @@ export function RekapAlokasiPage() {
     api_tag: "masterUnitKerja",
     api_method: "unitKerjaGetControllerGetData",
     api_query: [{ limit: 200 } as any],
+    should_running_if: show_unit_filter,
   });
 
   const rows: any[] = unwrap_list(rekap_query.response);
+
+  const unit_options = [
+    { label: "Semua Unit Kerja", value: "" },
+    ...unwrap_list(unit_query.response).map((u: any) => ({
+      value: String(u.id),
+      label: `${u.kode_unit} — ${u.nama_unit}`,
+    })),
+  ];
 
   const export_rekap = async () => {
     const params = new URLSearchParams();
@@ -47,9 +61,7 @@ export function RekapAlokasiPage() {
     set_exporting(true);
     try {
       const res = await fetch(`/api/alokasi-gaji/rekap/export?${params.toString()}`, {
-        headers: {
-          authorization: `Bearer ${auth_signal.value.selectedToken || ""}`,
-        },
+        headers: { authorization: `Bearer ${auth_signal.value.selectedToken || ""}` },
       });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
@@ -68,15 +80,19 @@ export function RekapAlokasiPage() {
     }
   };
 
-  const unit_options = [
-    { label: "Semua Unit Kerja", value: "" },
-    ...unwrap_list(unit_query.response).map((u: any) => ({
-      value: String(u.id),
-      label: `${u.kode_unit} — ${u.nama_unit}`,
-    })),
-  ];
+  // Summary stats dari rows
+  const total_gaji = rows.reduce((s, r) => s + (r.gaji_bulanan ?? 0), 0);
+  const total_alokasi = rows.reduce((s, r) => s + (r.total_alokasi ?? 0), 0);
+  const total_sisa = rows.reduce((s, r) => s + (r.sisa_gaji ?? 0), 0);
+  const sudah_dialokasi = rows.filter((r) => (r.total_alokasi ?? 0) > 0).length;
 
   const columns: Column<any>[] = [
+    {
+      id: "no",
+      label: "No",
+      width: 50,
+      render: (_: any, _row: any, idx?: number) => String((idx ?? 0) + 1),
+    },
     {
       id: "nama_pegawai",
       label: "Pegawai",
@@ -88,17 +104,30 @@ export function RekapAlokasiPage() {
         </Box>
       ),
     },
-    { id: "nama_unit_kerja", label: "Unit Kerja", hideMobile: true, render: (_, row) => String(row.nama_unit_kerja ?? "-") },
-    { id: "gaji_bulanan", label: "Gaji", align: "right", render: (_, row) => format_rupiah(row.gaji_bulanan) },
-    { id: "alokasi_ro", label: "RO", align: "right", hideMobile: true, render: (_, row) => format_rupiah(row.alokasi_ro) },
     {
-      id: "alokasi_operasional",
-      label: "Operasional",
-      align: "right",
+      id: "nama_unit_kerja",
+      label: "Unit Kerja",
       hideMobile: true,
-      render: (_, row) => format_rupiah(row.alokasi_operasional),
+      render: (_, row) => (
+        <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{String(row.nama_unit_kerja ?? "-")}</Typography>
+      ),
     },
-    { id: "total_alokasi", label: "Total Alokasi", align: "right", render: (_, row) => format_rupiah(row.total_alokasi) },
+    {
+      id: "gaji_bulanan",
+      label: "Gaji Pokok",
+      align: "right",
+      render: (_, row) => (
+        <Typography sx={{ fontSize: "0.82rem" }}>{format_rupiah(row.gaji_bulanan)}</Typography>
+      ),
+    },
+    {
+      id: "total_alokasi",
+      label: "Total Alokasi",
+      align: "right",
+      render: (_, row) => (
+        <Typography sx={{ fontSize: "0.82rem", fontWeight: 600 }}>{format_rupiah(row.total_alokasi)}</Typography>
+      ),
+    },
     {
       id: "sisa_gaji",
       label: "Sisa",
@@ -106,14 +135,25 @@ export function RekapAlokasiPage() {
       render: (_, row) => (
         <Typography
           sx={{
-            fontSize: "0.825rem",
+            fontSize: "0.82rem",
             fontWeight: 600,
-            color: (row.sisa_gaji ?? 0) >= 0 ? "var(--foreground)" : "#ef4444",
+            color: (row.sisa_gaji ?? 0) < 0 ? "#ef4444" : (row.sisa_gaji ?? 0) === 0 ? "#22c55e" : "var(--foreground)",
           }}
         >
           {format_rupiah(row.sisa_gaji)}
         </Typography>
       ),
+    },
+    {
+      id: "status_alokasi",
+      label: "Status",
+      align: "center",
+      render: (_, row) => {
+        const pct = row.gaji_bulanan > 0 ? ((row.total_alokasi ?? 0) / row.gaji_bulanan) * 100 : 0;
+        const label = pct >= 100 ? "Penuh" : pct > 0 ? "Sebagian" : "Belum";
+        const variant: "success" | "warning" | "danger" = pct >= 100 ? "success" : pct > 0 ? "warning" : "danger";
+        return <StatusChip label={label} variant={variant} size="small" />;
+      },
     },
   ];
 
@@ -129,15 +169,26 @@ export function RekapAlokasiPage() {
     {
       id: "sumber_dana",
       label: "Sumber",
-      render: (_, row) => String(row.sumber_dana ?? "-"),
+      render: (_, row) => <StatusChip label={String(row.sumber_dana ?? "-")} variant={row.sumber_dana === "RO" ? "info" : "warning"} size="small" />,
     },
     {
       id: "nama_ro",
       label: "RO / Operasional",
-      render: (_, row) => String(row.nama_ro ?? row.dana_operasional_id ?? "-"),
+      render: (_, row) => (
+        <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)" }}>{String(row.nama_ro ?? "-")}</Typography>
+      ),
     },
-    { id: "jumlah", label: "Jumlah", align: "right", render: (_, row) => format_rupiah(row.jumlah) },
-    { id: "status", label: "Status", render: (_, row) => String(row.status ?? "-") },
+    {
+      id: "jumlah",
+      label: "Jumlah",
+      align: "right",
+      render: (_, row) => <Typography sx={{ fontSize: "0.82rem", fontWeight: 600 }}>{format_rupiah(row.jumlah)}</Typography>,
+    },
+    {
+      id: "status",
+      label: "Status",
+      render: (_, row) => <StatusChip label={String(row.status ?? "-")} variant={row.status === "AKTIF" ? "success" : "danger"} size="small" />,
+    },
   ];
 
   return (
@@ -146,123 +197,146 @@ export function RekapAlokasiPage() {
       title="Rekap Alokasi Gaji"
       headerTitle="Rekap Alokasi Gaji"
       headerDescription="Rekap alokasi gaji TA per periode beserta sisa gajinya."
-      headerAction={
-        <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-          <Box sx={{ width: 140 }}>
-            <Box
-              component="select"
-              value={bulan}
-              onChange={(e: any) => setBulan(e.target.value)}
-              aria-label="Periode bulan"
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid var(--border)",
-                background: "var(--background)",
-                color: "var(--foreground)",
-                fontSize: "0.85rem",
-              }}
-            >
-              <option value="">Semua Bulan</option>
-              {BULAN_OPTIONS.map((b) => (
-                <option key={b.value} value={b.value}>
-                  {b.label}
-                </option>
-              ))}
-            </Box>
-          </Box>
-          <Box sx={{ width: 100 }}>
-            <Box
-              component="select"
-              value={tahun}
-              onChange={(e: any) => setTahun(e.target.value)}
-              aria-label="Periode tahun"
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid var(--border)",
-                background: "var(--background)",
-                color: "var(--foreground)",
-                fontSize: "0.85rem",
-              }}
-            >
-              <option value="">Semua Tahun</option>
-              {Array.from({ length: 5 }, (_, i) => {
-                const y = String(current_year() - i);
-                return (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                );
-              })}
-            </Box>
-          </Box>
-          {show_unit_filter ? (
-            <Box sx={{ width: 180 }}>
-              <Box
-                component="select"
-                value={unit}
-                onChange={(e: any) => setUnit(e.target.value)}
-                aria-label="Unit kerja"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  border: "1px solid var(--border)",
-                  background: "var(--background)",
-                  color: "var(--foreground)",
-                  fontSize: "0.85rem",
-                }}
-              >
-                {unit_options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Box>
-            </Box>
-          ) : null}
-          <SoftButton startIcon={<RefreshOutlined />} onClick={() => rekap_query.call_back()} disabled={rekap_query.is_loading} sx={{ flexShrink: 0 }}>
-            Refresh
-          </SoftButton>
-          <SoftButton startIcon={<DownloadOutlined />} onClick={export_rekap} disabled={exporting || rekap_query.is_loading} sx={{ flexShrink: 0 }}>
-            {exporting ? "Mengekspor..." : "Export"}
-          </SoftButton>
-        </Box>
-      }
     >
       <Box sx={{ py: 2.5, px: { xs: 2, sm: 3 } }}>
+        {/* Filter bar */}
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 1.5,
+            alignItems: "flex-end",
+            mb: 2.5,
+            pb: 2.5,
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          <Box sx={{ width: 160 }}>
+            <SearchableSelect
+              label="Bulan"
+              value={bulan}
+              options={[{ label: "Semua Bulan", value: "" }, ...BULAN_OPTIONS]}
+              onChange={(v) => setBulan(v)}
+            />
+          </Box>
+          <Box sx={{ width: 120 }}>
+            <SearchableSelect
+              label="Tahun"
+              value={tahun}
+              options={[{ label: "Semua Tahun", value: "" }, ...TAHUN_OPTIONS]}
+              onChange={(v) => setTahun(v)}
+            />
+          </Box>
+          {show_unit_filter && (
+            <Box sx={{ width: 240 }}>
+              <SearchableSelect
+                label="Unit Kerja"
+                value={unit}
+                options={unit_options}
+                onChange={(v) => setUnit(v)}
+                loading={unit_query.is_loading}
+              />
+            </Box>
+          )}
+          <SoftButton startIcon={<RefreshOutlined />} onClick={() => rekap_query.call_back()} disabled={rekap_query.is_loading}>
+            Refresh
+          </SoftButton>
+          <SoftButton startIcon={<DownloadOutlined />} onClick={export_rekap} disabled={exporting || rekap_query.is_loading}>
+            {exporting ? "Mengekspor..." : "Export Excel"}
+          </SoftButton>
+        </Box>
+
+        {/* Summary cards */}
+        {!rekap_query.is_loading && rows.length > 0 && (
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
+            {[
+              { label: "Total Pegawai TA", value: String(rows.length), sub: `${sudah_dialokasi} sudah dialokasi` },
+              { label: "Total Gaji Pokok", value: format_rupiah(total_gaji), sub: "seluruh TA aktif" },
+              { label: "Total Dialokasi", value: format_rupiah(total_alokasi), sub: "periode ini" },
+              { label: "Total Sisa", value: format_rupiah(total_sisa), sub: "belum teralokasi", highlight: total_sisa < 0 },
+            ].map((s) => (
+              <Grid key={s.label} size={{ xs: 6, sm: 3 }}>
+                <Box
+                  sx={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 2,
+                    p: 2,
+                    background: "var(--card)",
+                  }}
+                >
+                  <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mb: 0.5 }}>{s.label}</Typography>
+                  <Typography sx={{ fontSize: "1rem", fontWeight: 700, color: s.highlight ? "#ef4444" : "var(--foreground)" }}>{s.value}</Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mt: 0.25 }}>{s.sub}</Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        {/* Main table */}
         {rekap_query.error && !rekap_query.is_loading ? (
           <InfoCard message="Gagal memuat rekap alokasi gaji." variant="error" />
         ) : rekap_query.is_loading ? (
           <TableSkeleton rows={8} columns={7} />
+        ) : rows.length === 0 ? (
+          <InfoCard message="Belum ada data TA aktif untuk periode ini." variant="info" />
         ) : (
-          <Card sx={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 2 }}>
-            <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
-              <DataTable columns={columns} data={rows} title="Rekap Per Pegawai" onRowClick={setDetail} />
-            </CardContent>
-          </Card>
+          <Box sx={{ border: "1px solid var(--border)", borderRadius: 2, background: "var(--card)", overflow: "hidden" }}>
+            <DataTable
+              columns={columns}
+              data={rows}
+              title={`Rekap Per Pegawai${bulan && tahun ? ` — ${BULAN_OPTIONS.find((b) => b.value === bulan)?.label ?? bulan} ${tahun}` : ""}`}
+              onRowClick={setDetail}
+            />
+          </Box>
         )}
       </Box>
 
+      {/* Detail modal */}
       <Modal
         open={Boolean(detail)}
         onClose={() => setDetail(null)}
-        title={`Detail Alokasi — ${detail?.nama_pegawai ?? ""}`}
-        description={`Total alokasi: ${format_rupiah(detail?.total_alokasi)} · Sisa gaji: ${format_rupiah(detail?.sisa_gaji)}`}
-        maxWidth={720}
+        title={detail?.nama_pegawai ?? "Detail Alokasi"}
+        description={detail?.nama_unit_kerja ?? ""}
+        maxWidth={680}
         actions={[{ label: "Tutup", variant: "ghost", onClick: () => setDetail(null) }]}
       >
-        <Grid container spacing={2} sx={{ mt: 0.5 }}>
-          <Grid size={{ xs: 12 }}>
-            <DataTable columns={detail_columns} data={Array.isArray(detail?.detail) ? detail.detail : []} hidePagination title="Daftar Alokasi" />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>Dibuat pada {format_date(detail?.created_at)}</Typography>
-          </Grid>
-        </Grid>
+        {detail && (
+          <Box>
+            {/* Summary row */}
+            <Grid container spacing={1.5} sx={{ mb: 2 }}>
+              {[
+                { label: "Gaji Pokok", value: format_rupiah(detail.gaji_bulanan) },
+                { label: "Total Alokasi", value: format_rupiah(detail.total_alokasi) },
+                { label: "Sisa Gaji", value: format_rupiah(detail.sisa_gaji), red: (detail.sisa_gaji ?? 0) < 0 },
+              ].map((s) => (
+                <Grid key={s.label} size={{ xs: 4 }}>
+                  <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, p: 1.5, background: "var(--background)" }}>
+                    <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>{s.label}</Typography>
+                    <Typography sx={{ fontSize: "0.9rem", fontWeight: 700, color: s.red ? "#ef4444" : "var(--foreground)" }}>{s.value}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Divider sx={{ mb: 2 }} />
+
+            {/* Detail alokasi table */}
+            {Array.isArray(detail.detail) && detail.detail.length > 0 ? (
+              <DataTable columns={detail_columns} data={detail.detail} hidePagination title="Daftar Alokasi" />
+            ) : (
+              <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center" }}>
+                Belum ada alokasi untuk periode ini.
+              </Typography>
+            )}
+
+            {detail.created_at && (
+              <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mt: 1.5 }}>
+                Data terakhir diperbarui: {format_date(detail.updated_at ?? detail.created_at)}
+              </Typography>
+            )}
+          </Box>
+        )}
       </Modal>
     </DashboardLayout>
   );

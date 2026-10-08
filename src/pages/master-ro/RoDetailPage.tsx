@@ -274,7 +274,7 @@ export function RoDetailPage() {
 
         {/* RAB */}
         <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 1.5 }}>Dokumen RAB</Typography>
+          {/* <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 1.5 }}>Dokumen RAB</Typography> */}
           <FileUploadInput label="DOKUMEN RAB" value={rab_file} onChange={setRabFile} existingFileUrl={d.file_rab ?? null} accept=".pdf,.xlsx,.xls" disabled={!can_manage_ledger} />
           <Stack direction="row" spacing={1} sx={{ mt: 1.5, justifyContent: "flex-end", alignItems: "center" }}>
             {d.file_rab && <FileViewerButton fileUrl={d.file_rab} />}
@@ -332,22 +332,79 @@ export function RoDetailPage() {
 
         {/* Alokasi */}
         <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1 }}>Alokasi Gaji TA (dari RO ini)</Typography>
-          {alokasi_list.length === 0 ? (
-            <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)" }}>Belum ada alokasi gaji TA untuk RO ini.</Typography>
-          ) : (
-            <Box sx={{ border: "1px solid var(--border)", borderRadius: 1, overflow: "hidden" }}>
-              {alokasi_list.map((a: any) => (
-                <Box key={a.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 1.25, borderBottom: "1px solid var(--border)", "&:last-child": { borderBottom: 0 } }}>
-                  <Box>
-                    <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{String(a.pegawai?.nama ?? a.pegawai_id ?? "-")}</Typography>
-                    <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
-                      {String(a.pegawai?.nip_nik ?? "")} · {String(a.periode_bulan ?? "")}/{String(a.periode_tahun ?? "")}
+          <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1.5 }}>Alokasi Gaji TA (dari RO ini)</Typography>
+          <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, overflow: "hidden" }}>
+            <DataTable
+              columns={[
+                {
+                  id: "no",
+                  label: "No",
+                  width: 52,
+                  render: (_: any, _r: any, idx?: number) => String((idx ?? 0) + 1),
+                },
+                {
+                  id: "nama_pegawai",
+                  label: "Pegawai",
+                  render: (_: any, a: any) => (
+                    <Box>
+                      <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)" }}>
+                        {String(a.pegawai?.nama ?? a.nama_pegawai ?? a.pegawai_id ?? "-")}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
+                        {String(a.pegawai?.nip_nik ?? a.nip_nik ?? "")}
+                      </Typography>
+                    </Box>
+                  ),
+                },
+                {
+                  id: "periode",
+                  label: "Periode",
+                  width: 110,
+                  render: (_: any, a: any) => (
+                    <Typography sx={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>
+                      {String(a.periode_bulan ?? "-")}/{String(a.periode_tahun ?? "-")}
                     </Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: "0.85rem", fontWeight: 700 }}>{format_rupiah(a.jumlah)}</Typography>
-                </Box>
-              ))}
+                  ),
+                },
+                {
+                  id: "status",
+                  label: "Status",
+                  width: 100,
+                  render: (_: any, a: any) => (
+                    <StatusChip label={String(a.status ?? "-")} variant={status_variant(a.status)} size="small" />
+                  ),
+                },
+                {
+                  id: "jumlah",
+                  label: "Jumlah",
+                  align: "right" as const,
+                  width: 150,
+                  render: (_: any, a: any) => (
+                    <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      {format_rupiah(a.jumlah)}
+                    </Typography>
+                  ),
+                },
+              ]}
+              data={alokasi_list}
+              title=""
+              hideSearch
+              hidePagination
+              emptyState={
+                <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center", display: "block" }}>
+                  Belum ada alokasi gaji TA untuk RO ini.
+                </Typography>
+              }
+            />
+          </Box>
+          {alokasi_list.length > 0 && (
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.5, px: 1 }}>
+              <Box sx={{ textAlign: "right" }}>
+                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TOTAL ALOKASI</Typography>
+                <Typography sx={{ fontSize: "0.9rem", fontWeight: 800 }}>
+                  {format_rupiah(alokasi_list.reduce((s: number, a: any) => s + Number(a.jumlah ?? 0), 0))}
+                </Typography>
+              </Box>
             </Box>
           )}
         </Box>
