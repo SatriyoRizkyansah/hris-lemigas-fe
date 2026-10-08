@@ -1,12 +1,13 @@
 :root {
-  --background: #f7f9fc;
-  --foreground: #09090b;
+  --background: #fcfcfc;
+  --foreground: #121212;
 
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #121212;
 
-  --primary: #f28541;
-  --primary-foreground: #ffffff;
+  /* Kuning ESDM sebagai Primary Brand */
+  --primary: #ffeb00;
+  --primary-foreground: #000000;
 
   --secondary: #f4f4f5;
   --secondary-foreground: #18181b;
@@ -14,10 +15,10 @@
   --muted: #f4f4f5;
   --muted-foreground: #71717a;
 
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --accent: #fef08a;
+  --accent-foreground: #000000;
 
-  --destructive: #f28541;
+  --destructive: #dc2626;
 
   --success: #16a34a;
   --success-foreground: #ffffff;
@@ -27,37 +28,58 @@
 
   --border: #e4e4e7;
   --input: #e4e4e7;
-  --ring: #f28541;
+  --ring: #ffeb00;
 
-  --radius-xs: 0.375rem;
-  --radius-sm: 0.5rem;
-  --radius: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-full: 999px;
+  /* --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 0px; */
 }
+
+/* Force override ALL MUI's built-in rounded classes */
+/* .MuiPaper-rounded,
+.MuiCard-root,
+.MuiDialog-paper,
+.MuiDrawer-paper,
+.MuiPopover-paper,
+.MuiModal-root,
+.MuiSnackbar-root,
+.MuiChip-root,
+.MuiButton-root,
+.MuiIconButton-root,
+.MuiFab-root,
+.MuiAlert-root,
+.MuiTooltip-tooltip,
+.MuiAutocomplete-paper,
+.MuiMenu-paper,
+.MuiSelect-select {
+  border-radius: 0px !important;
+} */
 
 .dark {
   color-scheme: dark;
   --background: #09090b;
   --foreground: #fafafa;
 
-  --card: #09090b;
+  --card: #121214;
   --card-foreground: #fafafa;
 
-  --primary: #f28541;
-  --primary-foreground: #18181b;
+  /* Kuning Solid kontras tinggi untuk Dark Mode */
+  --primary: #ffe600;
+  --primary-foreground: #000000;
 
-  --secondary: #27272a;
+  --secondary: #1f1f23;
   --secondary-foreground: #fafafa;
 
-  --muted: #27272a;
+  --muted: #1f1f23;
   --muted-foreground: #a1a1aa;
 
   --accent: #27272a;
-  --accent-foreground: #fafafa;
+  --accent-foreground: #ffe600;
 
-  --destructive: #f28541;
+  --destructive: #ef4444;
 
   --success: #4ade80;
   --success-foreground: #052e16;
@@ -67,14 +89,14 @@
 
   --border: #27272a;
   --input: #27272a;
-  --ring: #f28541;
+  --ring: #ffe600;
 
-  --radius-xs: 0.375rem;
-  --radius-sm: 0.5rem;
-  --radius: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-full: 999px;
+  --radius-xs: 10px;
+  --radius-sm: 20px;
+  --radius: 30px;
+  --radius-lg: 40px;
+  --radius-xl: 50px;
+  --radius-full: 60px;
 }
 
 /* Theme transition support */
