@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { Box, Grid, TextField, Typography, Chip, Divider, Avatar, Stack, InputAdornment } from "@mui/material";
-import { AddOutlined, EditOutlined, VisibilityOutlined, BusinessOutlined, WorkOutlineOutlined, BadgeOutlined, CalendarTodayOutlined, SearchOutlined, HistoryOutlined, AssignmentOutlined } from "@mui/icons-material";
+import { Box, Grid, TextField, Typography, Divider, Avatar, Stack, InputAdornment } from "@mui/material";
+import { AddOutlined, EditOutlined, VisibilityOutlined, SearchOutlined, AssignmentOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
 import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip, ThemedDatePicker, FileUploadInput } from "../../components";
 import type { Column } from "../../components";
@@ -657,7 +657,8 @@ export function PegawaiPage() {
               set_detail_id(null);
               set_sk_search("");
             },
-          },
+            size: "small",
+          } as any,
         ]}
       >
         {(() => {
@@ -722,30 +723,26 @@ export function PegawaiPage() {
             set_sk_modal_open(true);
           };
           return (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-              {/* Hero */}
-              <Box sx={{ p: 1.5, borderRadius: 1.5, border: "1px solid var(--border)", background: "var(--card)", display: "flex", gap: 1.5, alignItems: "flex-start", flexWrap: "wrap" }}>
-                <Avatar sx={{ width: 44, height: 44, bgcolor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 800, fontSize: "0.95rem", flexShrink: 0 }}>{initials}</Avatar>
-                <Box sx={{ flex: 1, minWidth: 220 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--foreground)", lineHeight: 1.25 }}>{d.nama}</Typography>
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.75 }}>
-                    <Chip
-                      icon={<BadgeOutlined sx={{ fontSize: 14 }} />}
-                      label={d.nip_nik}
-                      size="small"
-                      sx={{ bgcolor: "#f3f4f6", color: "#18181b", border: "1px solid #d1d5db", fontWeight: 600, fontSize: "0.75rem", "& .MuiChip-icon": { color: "#71717a" } }}
-                    />
-                    <StatusChip label={d.status_aktif} variant={status_variant(d.status_aktif)} size="small" />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {/* ── Header: Avatar + Nama + Badges + Actions ── */}
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, pb: 2, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
+                <Avatar sx={{ width: 42, height: 42, bgcolor: "var(--primary)", color: "var(--primary-foreground)", fontWeight: 700, fontSize: "0.9rem", flexShrink: 0 }}>{initials}</Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "1rem", color: "var(--foreground)", lineHeight: 1.3 }}>{d.nama}</Typography>
+                  <Stack direction="row" alignItems="center" sx={{ mt: 0.5, gap: 0.75, flexWrap: "wrap" }}>
+                    <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", fontFamily: "monospace" }}>{d.nip_nik}</Typography>
+                    <Typography sx={{ color: "var(--border)" }}>·</Typography>
                     <StatusChip label={d.tipe_pegawai} variant={d.tipe_pegawai === "TA" ? "info" : "neutral"} size="small" />
+                    <StatusChip label={d.status_aktif} variant={status_variant(d.status_aktif)} size="small" />
                     {d.tipe_pegawai === "TA" && <StatusChip label={d.ta_kategori === "RO" ? "TA RO" : "TA Biasa"} variant={d.ta_kategori === "RO" ? "warning" : "neutral"} size="small" />}
                   </Stack>
-                  <Typography sx={{ mt: 1, fontSize: "0.78rem", color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
-                    <BusinessOutlined sx={{ fontSize: 14 }} /> {current?.unit_kerja?.nama_unit ?? d.unit_kerja?.nama_unit ?? "-"} {current?.unit_kerja?.kode_unit ? `· ${current.unit_kerja.kode_unit}` : ""}{" "}
-                    {current?.jabatan || d.jabatan ? `· ${current?.jabatan ?? d.jabatan}` : ""}
+                  <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-foreground)", mt: 0.5 }}>
+                    {current?.unit_kerja?.nama_unit ?? d.unit_kerja?.nama_unit ?? "—"}
+                    {current?.jabatan ? ` · ${current.jabatan}` : d.jabatan ? ` · ${d.jabatan}` : ""}
                   </Typography>
                 </Box>
                 {can_edit && (
-                  <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                  <Stack direction="row" spacing={0.75} sx={{ flexShrink: 0, mt: 0.25 }}>
                     <SoftButton size="small" startIcon={<AssignmentOutlined />} onClick={openSkQuickAdd}>
                       Tambah SK
                     </SoftButton>
@@ -764,156 +761,123 @@ export function PegawaiPage() {
                 )}
               </Box>
 
-              {/* Info grid */}
-              <Grid container spacing={1}>
-                {[
-                  { icon: <BusinessOutlined sx={{ fontSize: 16 }} />, label: "Unit Aktif", value: current?.unit_kerja?.nama_unit ?? d.unit_kerja?.nama_unit ?? "-", sub: current?.unit_kerja?.tipe_unit ?? d.unit_kerja?.tipe_unit ?? "" },
-                  { icon: <WorkOutlineOutlined sx={{ fontSize: 16 }} />, label: "Jabatan", value: current?.jabatan ?? d.jabatan ?? "-", sub: d.tipe_pegawai === "TA" && d.bidang_keahlian ? d.bidang_keahlian : "" },
-                  { icon: <CalendarTodayOutlined sx={{ fontSize: 14 }} />, label: "Masa Kerja", value: masaKerja, sub: d.tanggal_mulai ? `Mulai ${format_date(d.tanggal_mulai)}` : "" },
-                  {
-                    icon: <BadgeOutlined sx={{ fontSize: 16 }} />,
-                    label: "Gaji (SK Aktif)",
-                    value: activeSk ? format_rupiah(activeSk.gaji_bulanan) : "-",
-                    sub: activeSk ? `${activeSk.nomor_sk ?? ""} · ${format_date(activeSk.tanggal_efektif)}` : "Belum ada SK aktif",
-                  },
-                ].map((card) => (
-                  <Grid key={card.label} size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Box sx={{ p: 1.25, borderRadius: 1.25, border: "1px solid var(--border)", bgcolor: "var(--card)", height: "100%", display: "flex", gap: 1, alignItems: "flex-start" }}>
-                      <Box
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          bgcolor: "var(--muted)",
-                          color: "var(--muted-foreground)",
-                          border: "1px solid var(--border)",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {card.icon}
+              {/* ── Info rows (label-value pairs) ── */}
+              <Box sx={{ py: 2, borderBottom: "1px solid var(--border)" }}>
+                <Grid container rowSpacing={1.5} columnSpacing={3}>
+                  {[
+                    { label: "Unit Aktif", value: current?.unit_kerja?.nama_unit ?? d.unit_kerja?.nama_unit ?? "—" },
+                    { label: "Jabatan", value: current?.jabatan ?? d.jabatan ?? "—" },
+                    { label: "Masa Kerja", value: masaKerja },
+                    { label: "Gaji (SK Aktif)", value: activeSk ? format_rupiah(activeSk.gaji_bulanan) : "—" },
+                    { label: "Email", value: d.email ?? "—" },
+                    { label: "Telepon", value: d.telepon ?? "—" },
+                    { label: "Tanggal Mulai", value: format_date(d.tanggal_mulai) },
+                    ...(d.tipe_pegawai === "TA"
+                      ? [
+                          { label: "Bidang Keahlian", value: d.bidang_keahlian ?? "—" },
+                          { label: "Periode Kontrak", value: d.kontrak_mulai ? `${format_date(d.kontrak_mulai)} – ${format_date(d.kontrak_selesai) ?? "sekarang"}` : "—" },
+                        ]
+                      : []),
+                  ].map((row) => (
+                    <Grid key={row.label} size={{ xs: 12, sm: 6 }}>
+                      <Box sx={{ display: "flex", gap: 0 }}>
+                        <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", width: 130, flexShrink: 0 }}>{row.label}</Typography>
+                        <Typography sx={{ fontSize: "0.82rem", color: "var(--foreground)", fontWeight: 500, wordBreak: "break-word" }}>{row.value}</Typography>
                       </Box>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{card.label}</Typography>
-                        <Typography sx={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--foreground)", lineHeight: 1.25, wordBreak: "break-word" }}>{card.value}</Typography>
-                        {card.sub && <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", lineHeight: 1.3, wordBreak: "break-word" }}>{card.sub}</Typography>}
-                      </Box>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-
-              {/* Kontak */}
-              <Box sx={{ p: 1.25, borderRadius: 1.25, border: "1px solid var(--border)", bgcolor: "var(--muted)", display: "flex", flexWrap: "wrap", gap: 1.5 }}>
-                <Box sx={{ minWidth: 160 }}>
-                  <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Email</Typography>
-                  <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, wordBreak: "break-all" }}>{d.email ?? "-"}</Typography>
-                </Box>
-                <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
-                <Box sx={{ minWidth: 120 }}>
-                  <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Telepon</Typography>
-                  <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{d.telepon ?? "-"}</Typography>
-                </Box>
-                <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
-                <Box sx={{ minWidth: 140 }}>
-                  <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Tanggal Mulai</Typography>
-                  <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{format_date(d.tanggal_mulai)}</Typography>
-                </Box>
-                {d.tipe_pegawai === "TA" && (
-                  <>
-                    <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
-                    <Box sx={{ minWidth: 160 }}>
-                      <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--muted-foreground)" }}>Kontrak</Typography>
-                      <Typography sx={{ fontSize: "0.8rem", fontWeight: 600 }}>{d.kontrak_mulai ? `${format_date(d.kontrak_mulai)} — ${format_date(d.kontrak_selesai)}` : "-"}</Typography>
-                    </Box>
-                  </>
-                )}
+                    </Grid>
+                  ))}
+                </Grid>
               </Box>
 
-              {/* Riwayat SK */}
-              <Box>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1, gap: 1, flexWrap: "wrap" }}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Box sx={{ width: 24, height: 24, borderRadius: 1, display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "var(--foreground)", color: "var(--card)" }}>
-                      <HistoryOutlined sx={{ fontSize: 14 }} />
-                    </Box>
-                    <Typography sx={{ fontWeight: 700, fontSize: "0.85rem" }}>Riwayat SK</Typography>
-                    <Chip label={`${filteredSk.length} data`} size="small" sx={{ bgcolor: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", fontWeight: 600, fontSize: "0.7rem" }} />
-                  </Stack>
+              {/* ── Riwayat SK ── */}
+              <Box sx={{ pt: 2 }}>
+                {/* Header */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--foreground)" }}>Riwayat SK</Typography>
+                    <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>({filteredSk.length})</Typography>
+                  </Box>
                   <TextField
                     size="small"
-                    placeholder="Cari No SK / unit / jabatan..."
+                    placeholder="Cari no. SK, unit, jabatan..."
                     value={sk_search}
                     onChange={(e) => set_sk_search(e.target.value)}
-                    sx={{ minWidth: 220, "& .MuiOutlinedInput-root": { borderRadius: 1.25, bgcolor: "var(--card)" } }}
+                    sx={{ width: { xs: "100%", sm: 220 }, "& .MuiOutlinedInput-root": { fontSize: "0.8rem", height: 32 } }}
                     slotProps={{
                       input: {
                         startAdornment: (
                           <InputAdornment position="start">
-                            <SearchOutlined sx={{ fontSize: 18, color: "var(--muted-foreground)" }} />
+                            <SearchOutlined sx={{ fontSize: 15, color: "var(--muted-foreground)" }} />
                           </InputAdornment>
                         ),
                       },
                     }}
                   />
-                </Stack>
+                </Box>
 
                 {filteredSk.length === 0 ? (
-                  <Box sx={{ p: 2, borderRadius: 1.25, border: "1px dashed var(--border)", bgcolor: "var(--card)", textAlign: "center" }}>
-                    <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.85rem" }}>{skList.length === 0 ? "Belum ada riwayat SK." : "Tidak ada hasil untuk pencarian tersebut."}</Typography>
-                  </Box>
+                  <Typography sx={{ fontSize: "0.82rem", color: "var(--muted-foreground)", py: 2, textAlign: "center" }}>{skList.length === 0 ? "Belum ada riwayat SK." : "Tidak ada hasil."}</Typography>
                 ) : (
-                  <Stack spacing={1.25} sx={{ maxHeight: 360, overflow: "auto", pr: 0.5, scrollbarWidth: "thin" }}>
-                    {filteredSk.map((r: any) => {
+                  <Stack spacing={0} sx={{ maxHeight: 380, overflow: "auto", scrollbarWidth: "thin" }}>
+                    {filteredSk.map((r: any, idx: number) => {
                       const isActive = r.status_aktif === "AKTIF";
                       return (
                         <Box
                           key={r.id}
                           sx={{
-                            p: 1.25,
-                            borderRadius: 1.25,
-                            border: "1px solid var(--border)",
-                            bgcolor: isActive ? "color-mix(in srgb, var(--primary) 4%, var(--card))" : "var(--card)",
+                            py: 1.5,
+                            px: 0,
+                            borderTop: idx > 0 ? "1px solid var(--border)" : "none",
                             display: "flex",
-                            gap: 1.25,
+                            gap: 1.5,
                             alignItems: "flex-start",
-                            position: "relative",
-                            overflow: "hidden",
-                            "&::before": { content: '""', position: "absolute", left: 0, top: 0, bottom: 0, width: 3, bgcolor: isActive ? "var(--primary)" : "var(--border)" },
                           }}
                         >
-                          <Box
-                            sx={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: "50%",
-                              mt: 0.75,
-                              bgcolor: isActive ? "var(--primary)" : "var(--muted-foreground)",
-                              boxShadow: isActive ? "0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent)" : "none",
-                              flexShrink: 0,
-                            }}
-                          />
+                          {/* Timeline dot */}
+                          <Box sx={{ pt: 0.5, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                mt: 0.25,
+                                bgcolor: isActive ? "var(--primary)" : "var(--border)",
+                                outline: isActive ? "3px solid color-mix(in srgb, var(--primary) 20%, transparent)" : "none",
+                              }}
+                            />
+                          </Box>
+
+                          {/* Content */}
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap", gap: 0.75 }}>
-                              <Typography sx={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--foreground)" }}>{r.nomor_sk ?? "-"}</Typography>
-                              <Typography sx={{ fontSize: "0.7rem", color: "#374151", bgcolor: "#f3f4f6", px: 0.75, py: 0.2, borderRadius: 1, border: "1px solid #d1d5db" }}>
-                                {r.unit_kerja?.nama_unit ?? "-"} {r.unit_kerja?.kode_unit ? `· ${r.unit_kerja.kode_unit}` : ""}
-                              </Typography>
-                              {r.is_homebase ? (
-                                <Chip label="Homebase" size="small" sx={{ height: 20, fontSize: "0.68rem", fontWeight: 700, bgcolor: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }} />
-                              ) : (
-                                <Chip label="Tugas Tambahan" size="small" sx={{ height: 20, fontSize: "0.68rem", fontWeight: 700, bgcolor: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" }} />
-                              )}
+                            {/* Row 1: Nomor SK + badges */}
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
+                              <Typography sx={{ fontSize: "0.83rem", fontWeight: 600, color: "var(--foreground)" }}>{r.nomor_sk ?? "—"}</Typography>
                               <StatusChip label={r.status_aktif} variant={status_variant(r.status_aktif)} size="small" />
-                            </Stack>
-                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", mt: 0.5, wordBreak: "break-word" }}>
-                              {r.jabatan ? `Jabatan: ${r.jabatan}` : "Jabatan: -"} · Efektif {format_date(r.tanggal_efektif)} {r.tanggal_selesai ? `— ${format_date(r.tanggal_selesai)}` : "— sekarang"} · SK {format_date(r.tanggal_sk)}{" "}
-                              {r.gaji_bulanan != null ? `· ${format_rupiah(r.gaji_bulanan)}` : ""}
+                              {r.is_homebase ? <StatusChip label="Homebase" variant="danger" size="small" /> : <StatusChip label="Tugas Tambahan" variant="warning" size="small" />}
+                            </Box>
+
+                            {/* Row 2: detail dalam satu baris */}
+                            <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)", lineHeight: 1.7 }}>
+                              <span style={{ color: "var(--foreground)", fontWeight: 500 }}>{r.unit_kerja?.nama_unit ?? "—"}</span>
+                              {r.unit_kerja?.kode_unit ? ` · ${r.unit_kerja.kode_unit}` : ""}
+                              {r.jabatan ? ` · ${r.jabatan}` : ""}
+                              {" · "}
+                              {format_date(r.tanggal_efektif)} – {r.tanggal_selesai ? format_date(r.tanggal_selesai) : "sekarang"}
+                              {r.gaji_bulanan ? ` · ${format_rupiah(r.gaji_bulanan)}` : ""}
+                              {r.sumber_dana_default ? ` · ${r.sumber_dana_default}` : ""}
                             </Typography>
-                            {r.keterangan && <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", mt: 0.25, fontStyle: "italic", wordBreak: "break-word" }}>{r.keterangan}</Typography>}
-                            {r.file_sk && <Typography sx={{ fontSize: "0.72rem", color: "var(--primary)", mt: 0.25, wordBreak: "break-all" }}>File: {r.file_sk}</Typography>}
+
+                            {/* Row 3: keterangan + file (opsional) */}
+                            {(r.keterangan || r.file_sk) && (
+                              <Box sx={{ display: "flex", gap: 1.5, mt: 0.25, flexWrap: "wrap" }}>
+                                {r.keterangan && <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", fontStyle: "italic" }}>{r.keterangan}</Typography>}
+                                {r.file_sk && (
+                                  <Typography component="a" href={r.file_sk} target="_blank" rel="noreferrer" sx={{ fontSize: "0.75rem", color: "var(--primary)", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}>
+                                    Lihat file SK
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
                           </Box>
                         </Box>
                       );
