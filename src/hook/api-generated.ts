@@ -91,8 +91,8 @@ export interface PegawaiItemDto {
   bidang_keahlian?: object | null;
   kontrak_mulai?: object | null;
   kontrak_selesai?: object | null;
-  gaji_bulanan?: object | null;
   ta_kategori?: string;
+  gaji_bulanan?: object | null;
   unit_kerja?: UnitKerjaRingkasDto | null;
   /** @format date-time */
   created_at?: string;
@@ -145,8 +145,8 @@ export interface PegawaiDetailDto {
   bidang_keahlian?: object | null;
   kontrak_mulai?: object | null;
   kontrak_selesai?: object | null;
-  gaji_bulanan?: object | null;
   ta_kategori?: string;
+  gaji_bulanan?: object | null;
   unit_kerja?: UnitKerjaRingkasDto | null;
   /** @format date-time */
   created_at?: string;
@@ -187,11 +187,6 @@ export interface CreatePegawaiDto {
   /** @example "2026-12-31" */
   kontrak_selesai?: string;
   /**
-   * Gaji/honorarium bulanan dalam Rupiah (integer)
-   * @example 15000000
-   */
-  gaji_bulanan?: number;
-  /**
    * Kategori TA: BIASA atau RO
    * @default "BIASA"
    */
@@ -217,8 +212,6 @@ export interface UpdatePegawaiDto {
   kontrak_mulai?: string;
   /** @example "2026-12-31" */
   kontrak_selesai?: string;
-  /** @example 15000000 */
-  gaji_bulanan?: number;
   ta_kategori?: "BIASA" | "RO";
   id_unit_kerja?: string;
 }
@@ -463,6 +456,10 @@ export interface SkItemDto {
   tanggal_selesai?: object | null;
   jabatan?: object | null;
   file_sk?: object | null;
+  gaji_bulanan?: object | null;
+  sumber_dana_default?: "RO" | "OPERASIONAL" | null;
+  ro_id_default?: object | null;
+  dana_operasional_id_default?: object | null;
   status_aktif: string;
   id_pegawai?: object | null;
   nama_pegawai?: object | null;
@@ -492,6 +489,17 @@ export interface CreateSkDto {
   jabatan?: string;
   /** File PDF SK (akan diupload via endpoint upload) */
   file_sk?: string;
+  /**
+   * Gaji bulanan per SK
+   * @example 12000000
+   */
+  gaji_bulanan?: number;
+  /** Default sumber dana TA */
+  sumber_dana_default?: "RO" | "OPERASIONAL";
+  /** Default RO id jika sumber RO */
+  ro_id_default?: string;
+  /** Default dana operasional id jika sumber OPERASIONAL */
+  dana_operasional_id_default?: string;
 }
 
 export interface UpdateSkDto {
@@ -502,6 +510,11 @@ export interface UpdateSkDto {
   id_unit_kerja?: string;
   jabatan?: string;
   file_sk?: string;
+  /** @example 12000000 */
+  gaji_bulanan?: number;
+  sumber_dana_default?: "RO" | "OPERASIONAL";
+  ro_id_default?: string;
+  dana_operasional_id_default?: string;
 }
 
 export interface ActivateSkDto {
@@ -2020,7 +2033,57 @@ export class Api<
         method: "POST",
         body: data,
         secure: true,
-        type: ContentType.Json,
+        type: ContentType.FormData,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags SK
+     * @name SkGetControllerGetExpiringSoon
+     * @summary SK hampir habis (30 hari) (Superadmin, Koordinator)
+     * @request GET:/api/sk/expiring-soon
+     * @secure
+     */
+    skGetControllerGetExpiringSoon: (
+      query?: {
+        /** Pencarian / filter bebas */
+        query?: string;
+        /** @default 10 */
+        limit?: number;
+        /** @default 1 */
+        page?: number;
+        /** Filter pegawai */
+        id_pegawai?: string;
+        /** Filter unit kerja */
+        id_unit_kerja?: string;
+        /** Hanya SK aktif */
+        status_aktif?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        StandartResponse & {
+          data?: SkItemDto[];
+          pagination?: {
+            /** @example 10 */
+            limit?: number;
+            /** @example 1 */
+            page?: number;
+            /** @example 1 */
+            total_pages?: number;
+            /** @example 1 */
+            total_datas?: number;
+          };
+        },
+        void
+      >({
+        path: `/api/sk/expiring-soon`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -2100,7 +2163,7 @@ export class Api<
         method: "PUT",
         body: data,
         secure: true,
-        type: ContentType.Json,
+        type: ContentType.FormData,
         format: "json",
         ...params,
       }),
@@ -2561,6 +2624,21 @@ export class Api<
         method: "GET",
         query: query,
         secure: true,
+        ...params,
+      }),
+  };
+  file = {
+    /**
+     * No description
+     *
+     * @tags File
+     * @name FileControllerGetFile
+     * @request GET:/api/uploaded/{path}
+     */
+    fileControllerGetFile: (path: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/uploaded/${path}`,
+        method: "GET",
         ...params,
       }),
   };

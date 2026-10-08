@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Box, Checkbox, FormControlLabel, Grid, TextField, Typography } from "@mui/material";
 import { AddOutlined, EditOutlined, DeleteOutlined, BlockOutlined, CheckCircleOutline } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip, ThemedDatePicker } from "../../components";
+import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip, ThemedDatePicker, FileUploadInput } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
-import { resolve_current_role, format_date, to_date_input, status_variant, unwrap_list, unwrap_pagination } from "../../common/hris";
+import { resolve_current_role, format_date, format_rupiah, to_date_input, status_variant, unwrap_list, unwrap_pagination } from "../../common/hris";
 
 function Field({ label, value, onChange, required, disabled, type }: any) {
   return (
@@ -47,6 +47,7 @@ export function SkPage() {
   const [modal_open, set_modal_open] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
+  const [sk_file, set_sk_file] = useState<File | null>(null);
   const [custom_effective_date, setCustomEffectiveDate] = useState(false);
   const [confirm_target, setConfirmTarget] = useState<any>(null);
   const [toggle_target, setToggleTarget] = useState<any>(null);
@@ -73,6 +74,18 @@ export function SkPage() {
   const unit_query = use_query({
     api_tag: "masterUnitKerja",
     api_method: "unitKerjaGetControllerGetData",
+    api_query: [{ limit: 200 } as any],
+  });
+
+  const ro_query = use_query({
+    api_tag: "masterRo",
+    api_method: "roControllerGetData",
+    api_query: [{ limit: 200 } as any],
+  });
+
+  const dana_query = use_query({
+    api_tag: "masterDanaOperasional",
+    api_method: "danaOperasionalControllerGetData",
     api_query: [{ limit: 200 } as any],
   });
 
@@ -124,9 +137,19 @@ export function SkPage() {
     options: { call_back: () => list_query.call_back() },
   });
 
+  const ro_options = unwrap_list(ro_query.response).map((r: any) => ({
+    value: String(r.id),
+    label: `${r.kode_ro} — ${r.nama_ro}`,
+  }));
+  const dana_options = unwrap_list(dana_query.response).map((d: any) => ({
+    value: String(d.id),
+    label: `${d.nama_unit_koordinator ?? d.id_unit_koordinator ?? "-"} — ${d.tahun_fiscal} (${format_rupiah(d.total_plafon)})`,
+  }));
+
   const open_create = () => {
     setEditing(null);
     setCustomEffectiveDate(false);
+    set_sk_file(null);
     setForm({
       nomor_sk: "",
       tanggal_sk: "",
@@ -135,6 +158,10 @@ export function SkPage() {
       id_pegawai: "",
       id_unit_kerja: "",
       jabatan: "",
+      gaji_bulanan: "",
+      sumber_dana_default: "OPERASIONAL",
+      ro_id_default: "",
+      dana_operasional_id_default: "",
       file_sk: "",
     });
     set_modal_open(true);
@@ -143,6 +170,7 @@ export function SkPage() {
   const open_edit = (row: any) => {
     setEditing(row);
     setCustomEffectiveDate(to_date_input(row.tanggal_efektif) !== to_date_input(row.tanggal_sk));
+    set_sk_file(null);
     setForm({
       nomor_sk: row.nomor_sk ?? "",
       tanggal_sk: to_date_input(row.tanggal_sk),
@@ -151,6 +179,10 @@ export function SkPage() {
       id_pegawai: row.id_pegawai ?? "",
       id_unit_kerja: row.id_unit_kerja ?? "",
       jabatan: row.jabatan ?? "",
+      gaji_bulanan: row.gaji_bulanan != null ? String(row.gaji_bulanan) : "",
+      sumber_dana_default: row.sumber_dana_default ?? "OPERASIONAL",
+      ro_id_default: row.ro_id_default ?? "",
+      dana_operasional_id_default: row.dana_operasional_id_default ?? "",
       file_sk: row.file_sk ?? "",
     });
     set_modal_open(true);
@@ -159,32 +191,23 @@ export function SkPage() {
   const submit = () => {
     const tanggal_efektif = custom_effective_date ? form.tanggal_efektif : form.tanggal_sk;
     if (!form.tanggal_sk || !tanggal_efektif) return;
+    const base: any = {
+      nomor_sk: form.nomor_sk,
+      tanggal_sk: form.tanggal_sk,
+      tanggal_efektif,
+      tanggal_selesai: form.tanggal_selesai || undefined,
+      jabatan: form.jabatan || undefined,
+      gaji_bulanan: form.gaji_bulanan !== "" && form.gaji_bulanan != null ? Number(form.gaji_bulanan) : undefined,
+      sumber_dana_default: form.sumber_dana_default || undefined,
+      ro_id_default: form.sumber_dana_default === "RO" ? form.ro_id_default || undefined : undefined,
+      dana_operasional_id_default: form.sumber_dana_default === "OPERASIONAL" ? form.dana_operasional_id_default || undefined : undefined,
+    };
+    if (sk_file) base.file = sk_file;
+    else if (form.file_sk) base.file_sk = form.file_sk;
     if (editing) {
-      update_mutation([
-        editing.id,
-        {
-          nomor_sk: form.nomor_sk,
-          tanggal_sk: form.tanggal_sk,
-          tanggal_efektif,
-          tanggal_selesai: form.tanggal_selesai || undefined,
-          id_unit_kerja: form.id_unit_kerja,
-          jabatan: form.jabatan || undefined,
-          file_sk: form.file_sk || undefined,
-        },
-      ]);
+      update_mutation([editing.id, { ...base, id_unit_kerja: form.id_unit_kerja }]);
     } else {
-      create_mutation([
-        {
-          nomor_sk: form.nomor_sk,
-          tanggal_sk: form.tanggal_sk,
-          tanggal_efektif,
-          tanggal_selesai: form.tanggal_selesai || undefined,
-          id_pegawai: form.id_pegawai,
-          id_unit_kerja: form.id_unit_kerja,
-          jabatan: form.jabatan || undefined,
-          file_sk: form.file_sk || undefined,
-        },
-      ]);
+      create_mutation([{ ...base, id_pegawai: form.id_pegawai, id_unit_kerja: form.id_unit_kerja }]);
     }
   };
 
@@ -351,6 +374,29 @@ export function SkPage() {
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="Jabatan" value={form.jabatan} onChange={(v: string) => set_field("jabatan", v)} />
           </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Field label="Gaji Bulanan (Rp)" value={form.gaji_bulanan} onChange={(v: string) => set_field("gaji_bulanan", v)} type="number" />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <SearchableSelect
+              label="Sumber Dana Default"
+              value={String(form.sumber_dana_default ?? "OPERASIONAL")}
+              options={[
+                { value: "OPERASIONAL", label: "Operasional" },
+                { value: "RO", label: "RO" },
+              ]}
+              onChange={(v) => set_field("sumber_dana_default", v)}
+            />
+          </Grid>
+          {form.sumber_dana_default === "RO" ? (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <SearchableSelect label="RO Default" value={String(form.ro_id_default ?? "")} options={ro_options} onChange={(v) => set_field("ro_id_default", v)} loading={ro_query.is_loading} />
+            </Grid>
+          ) : (
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <SearchableSelect label="Dana Operasional Default" value={String(form.dana_operasional_id_default ?? "")} options={dana_options} onChange={(v) => set_field("dana_operasional_id_default", v)} loading={dana_query.is_loading} />
+            </Grid>
+          )}
           <Grid size={{ xs: 12 }}>
             <SearchableSelect label="Pegawai" value={String(form.id_pegawai ?? "")} options={pegawai_options} onChange={(v) => set_field("id_pegawai", v)} loading={pegawai_query.is_loading} disabled={Boolean(editing)} required />
           </Grid>
@@ -358,7 +404,7 @@ export function SkPage() {
             <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} required />
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <Field label="File SK (nama/tautan file)" value={form.file_sk} onChange={(v: string) => set_field("file_sk", v)} />
+            <FileUploadInput value={sk_file} onChange={set_sk_file} existingFileUrl={form.file_sk} accept=".pdf" label="File SK (PDF)" />
           </Grid>
         </Grid>
       </Modal>

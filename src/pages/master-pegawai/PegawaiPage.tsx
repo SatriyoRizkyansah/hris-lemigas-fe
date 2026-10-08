@@ -135,7 +135,6 @@ export function PegawaiPage() {
       tanggal_mulai: "",
       status_aktif: "AKTIF",
       bidang_keahlian: "",
-      gaji_bulanan: "",
       id_unit_kerja: "",
     });
     set_modal_open(true);
@@ -161,7 +160,6 @@ export function PegawaiPage() {
       bidang_keahlian: row.bidang_keahlian ?? "",
       kontrak_mulai: to_date_input(row.kontrak_mulai),
       kontrak_selesai: to_date_input(row.kontrak_selesai),
-      gaji_bulanan: row.gaji_bulanan ?? "",
       id_unit_kerja: row.unit_kerja?.id ?? row.id_unit_kerja ?? "",
     });
     set_modal_open(true);
@@ -205,7 +203,6 @@ export function PegawaiPage() {
       telepon: form.telepon || undefined,
       status_aktif: form.status_aktif || undefined,
       bidang_keahlian: form.tipe_pegawai === "TA" ? form.bidang_keahlian || undefined : undefined,
-      gaji_bulanan: form.gaji_bulanan !== "" && form.gaji_bulanan != null ? Number(form.gaji_bulanan) : undefined,
     };
     if (editing) {
       if (form.tipe_pegawai === "TA") {
@@ -431,9 +428,6 @@ export function PegawaiPage() {
               )}
             </>
           )}
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Gaji/Honorarium Bulanan (Rp)" value={form.gaji_bulanan} onChange={(v: string) => set_field("gaji_bulanan", v)} type="number" />
-          </Grid>
           {!editing && (
             <Grid size={{ xs: 12 }}>
               <SearchableSelect label="Unit Kerja Awal" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} />
