@@ -16,7 +16,7 @@ import { useSignalValue } from "@Signal/hooks";
 import { auth_signal, clear_auth, set_selected_token } from "@Signal/use-signal/auth-init-signal";
 import network_cache from "@Hooks/api-cache";
 import { Loader } from "../components/loading/Loader";
-import HeaderImage from "../assets/images/vite.svg";
+import HeaderImage from "../assets/images/lemigas.webp";
 import userImage from "@/assets/images/user.png";
 
 const drawerWidth = 250;
@@ -274,7 +274,7 @@ export function Sidebar() {
                       transition: "opacity 0.18s ease, transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
-                    SRT
+                    LEMIGAS
                   </Typography>
 
                   {/* Subtitle */}
@@ -288,7 +288,7 @@ export function Sidebar() {
                       transition: "opacity 0.2s ease, transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
-                    My APP Satriyo Template
+                    Human Resource Information System
                   </Typography>
                 </Box>
               </Box>

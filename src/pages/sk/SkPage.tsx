@@ -162,6 +162,8 @@ export function SkPage() {
       sumber_dana_default: "OPERASIONAL",
       ro_id_default: "",
       dana_operasional_id_default: "",
+      is_tugas_tambahan: false,
+      keterangan: "",
       file_sk: "",
     });
     set_modal_open(true);
@@ -183,6 +185,8 @@ export function SkPage() {
       sumber_dana_default: row.sumber_dana_default ?? "OPERASIONAL",
       ro_id_default: row.ro_id_default ?? "",
       dana_operasional_id_default: row.dana_operasional_id_default ?? "",
+      is_tugas_tambahan: false,
+      keterangan: row.keterangan ?? "",
       file_sk: row.file_sk ?? "",
     });
     set_modal_open(true);
@@ -195,13 +199,15 @@ export function SkPage() {
       nomor_sk: form.nomor_sk,
       tanggal_sk: form.tanggal_sk,
       tanggal_efektif,
-      tanggal_selesai: form.tanggal_selesai || undefined,
-      jabatan: form.jabatan || undefined,
-      gaji_bulanan: form.gaji_bulanan !== "" && form.gaji_bulanan != null ? Number(form.gaji_bulanan) : undefined,
-      sumber_dana_default: form.sumber_dana_default || undefined,
-      ro_id_default: form.sumber_dana_default === "RO" ? form.ro_id_default || undefined : undefined,
-      dana_operasional_id_default: form.sumber_dana_default === "OPERASIONAL" ? form.dana_operasional_id_default || undefined : undefined,
     };
+    if (form.tanggal_selesai) base.tanggal_selesai = form.tanggal_selesai;
+    if (form.jabatan) base.jabatan = form.jabatan;
+    if (form.gaji_bulanan !== "" && form.gaji_bulanan != null) base.gaji_bulanan = Number(form.gaji_bulanan);
+    if (form.sumber_dana_default) base.sumber_dana_default = form.sumber_dana_default;
+    if (form.sumber_dana_default === "RO" && form.ro_id_default) base.ro_id_default = form.ro_id_default;
+    if (form.sumber_dana_default === "OPERASIONAL" && form.dana_operasional_id_default) base.dana_operasional_id_default = form.dana_operasional_id_default;
+    if (form.is_tugas_tambahan) base.is_tugas_tambahan = true;
+    if (form.keterangan) base.keterangan = form.keterangan;
     if (sk_file) base.file = sk_file;
     else if (form.file_sk) base.file_sk = form.file_sk;
     if (editing) {
@@ -402,6 +408,17 @@ export function SkPage() {
           </Grid>
           <Grid size={{ xs: 12 }}>
             <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} required />
+          </Grid>
+          {!editing && (
+            <Grid size={{ xs: 12 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 1, borderRadius: 1.25, bgcolor: form.is_tugas_tambahan ? "#fef3c7" : "var(--muted)", border: "1px solid var(--border)" }}>
+                <input type="checkbox" checked={Boolean(form.is_tugas_tambahan)} onChange={(e) => set_field("is_tugas_tambahan", e.target.checked)} style={{ width: 16, height: 16 }} />
+                <Typography sx={{ fontSize: "0.82rem", fontWeight: 600 }}>Tugas tambahan (rangkap, tidak menonaktifkan SK homebase aktif)</Typography>
+              </Box>
+            </Grid>
+          )}
+          <Grid size={{ xs: 12 }}>
+            <Field label="Keterangan" value={form.keterangan} onChange={(v: string) => set_field("keterangan", v)} />
           </Grid>
           <Grid size={{ xs: 12 }}>
             <FileUploadInput value={sk_file} onChange={set_sk_file} existingFileUrl={form.file_sk} accept=".pdf" label="File SK (PDF)" />

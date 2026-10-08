@@ -34,33 +34,6 @@ export interface LoginUserDto {
   akses: AksesItemDto[];
 }
 
-export interface CreatePenempatanDto {
-  /** Unit kerja tujuan */
-  unit_kerja_id: string;
-  /** @example "Analis Migas" */
-  jabatan?: string;
-  /** @example "2024-01-01" */
-  tmt: string;
-  /** @example "2025-12-31" */
-  tanggal_selesai?: string;
-  /** @example "SK/001/2024" */
-  no_sk?: string;
-  keterangan?: string;
-  /** @default true */
-  is_homebase?: boolean;
-}
-
-export interface UpdatePenempatanDto {
-  unit_kerja_id?: string;
-  jabatan?: string;
-  tmt?: string;
-  tanggal_selesai?: string;
-  no_sk?: string;
-  keterangan?: string;
-  status_aktif?: "AKTIF" | "NONAKTIF";
-  is_homebase?: boolean;
-}
-
 export interface StandartResponse {
   /** @example 200 */
   status: number;
@@ -114,23 +87,6 @@ export interface SkRiwayatItemDto {
   unit_kerja?: UnitKerjaRingkasDto;
 }
 
-export interface PenempatanItemDto {
-  id: string;
-  pegawai_id: string;
-  unit_kerja: UnitKerjaRingkasDto;
-  jabatan?: object | null;
-  /** @format date-time */
-  tmt: string;
-  tanggal_selesai?: object | null;
-  no_sk?: object | null;
-  file_sk?: object | null;
-  status_aktif: string;
-  is_homebase: boolean;
-  keterangan?: object | null;
-  /** @format date-time */
-  created_at: string;
-}
-
 export interface PegawaiDetailDto {
   id: string;
   nip_nik: string;
@@ -153,7 +109,6 @@ export interface PegawaiDetailDto {
   /** @format date-time */
   updated_at?: string;
   riwayat_sk: SkRiwayatItemDto[];
-  riwayat_penempatan: PenempatanItemDto[];
 }
 
 export interface StandartResponseCreate {
@@ -191,8 +146,6 @@ export interface CreatePegawaiDto {
    * @default "BIASA"
    */
   ta_kategori?: "BIASA" | "RO";
-  /** Unit kerja aktif */
-  id_unit_kerja?: string;
 }
 
 export interface UpdatePegawaiDto {
@@ -213,7 +166,6 @@ export interface UpdatePegawaiDto {
   /** @example "2026-12-31" */
   kontrak_selesai?: string;
   ta_kategori?: "BIASA" | "RO";
-  id_unit_kerja?: string;
 }
 
 export interface UnitKerjaItemDto {
@@ -460,6 +412,9 @@ export interface SkItemDto {
   sumber_dana_default?: "RO" | "OPERASIONAL" | null;
   ro_id_default?: object | null;
   dana_operasional_id_default?: object | null;
+  /** Homebase (true) atau tugas tambahan (false) */
+  is_homebase: boolean;
+  keterangan?: object | null;
   status_aktif: string;
   id_pegawai?: object | null;
   nama_pegawai?: object | null;
@@ -500,6 +455,13 @@ export interface CreateSkDto {
   ro_id_default?: string;
   /** Default dana operasional id jika sumber OPERASIONAL */
   dana_operasional_id_default?: string;
+  /**
+   * Tugas tambahan (true = rangkap, false = mutasi/perpanjangan)
+   * @default false
+   */
+  is_tugas_tambahan?: boolean;
+  /** Keterangan penempatan */
+  keterangan?: string;
 }
 
 export interface UpdateSkDto {
@@ -953,93 +915,6 @@ export class Api<
       this.request<void, any>({
         path: `/api/auth/me`,
         method: "GET",
-        secure: true,
-        ...params,
-      }),
-  };
-  masterPegawaiPenempatan = {
-    /**
-     * No description
-     *
-     * @tags Master - Pegawai Penempatan
-     * @name PegawaiPenempatanControllerGetPenempatan
-     * @summary Get riwayat penempatan pegawai (Superadmin, Koordinator)
-     * @request GET:/api/pegawai/{id}/penempatan
-     * @secure
-     */
-    pegawaiPenempatanControllerGetPenempatan: (
-      id: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<void, any>({
-        path: `/api/pegawai/${id}/penempatan`,
-        method: "GET",
-        secure: true,
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Master - Pegawai Penempatan
-     * @name PegawaiPenempatanControllerCreatePenempatan
-     * @summary Tambah penempatan pegawai (Superadmin, Koordinator)
-     * @request POST:/api/pegawai/{id}/penempatan
-     * @secure
-     */
-    pegawaiPenempatanControllerCreatePenempatan: (
-      id: string,
-      data: CreatePenempatanDto,
-      params: RequestParams = {},
-    ) =>
-      this.request<void, any>({
-        path: `/api/pegawai/${id}/penempatan`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Master - Pegawai Penempatan
-     * @name PegawaiPenempatanControllerUpdatePenempatan
-     * @summary Update penempatan pegawai (Superadmin, Koordinator)
-     * @request PUT:/api/pegawai/penempatan/{penempatanId}
-     * @secure
-     */
-    pegawaiPenempatanControllerUpdatePenempatan: (
-      penempatanId: string,
-      data: UpdatePenempatanDto,
-      params: RequestParams = {},
-    ) =>
-      this.request<void, any>({
-        path: `/api/pegawai/penempatan/${penempatanId}`,
-        method: "PUT",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Master - Pegawai Penempatan
-     * @name PegawaiPenempatanControllerDeletePenempatan
-     * @summary Hapus penempatan pegawai (Superadmin)
-     * @request DELETE:/api/pegawai/penempatan/{penempatanId}
-     * @secure
-     */
-    pegawaiPenempatanControllerDeletePenempatan: (
-      penempatanId: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<void, any>({
-        path: `/api/pegawai/penempatan/${penempatanId}`,
-        method: "DELETE",
         secure: true,
         ...params,
       }),

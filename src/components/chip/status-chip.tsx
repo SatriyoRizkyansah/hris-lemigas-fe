@@ -9,29 +9,29 @@ interface StatusChipProps {
 export function StatusChip({ label, variant = "neutral", size = "default" }: StatusChipProps) {
   const styles = {
     success: {
-      backgroundColor: "color-mix(in srgb, #22c55e 18%, transparent)",
-      color: "#15803d",
-      border: "1px solid color-mix(in srgb, #22c55e 35%, transparent)",
+      backgroundColor: "#dcfce7",
+      color: "#166534",
+      border: "1px solid #86efac",
     },
     neutral: {
-      backgroundColor: "color-mix(in srgb, #6b7280 14%, transparent)",
+      backgroundColor: "#f3f4f6",
       color: "#374151",
-      border: "1px solid color-mix(in srgb, #6b7280 30%, transparent)",
+      border: "1px solid #d1d5db",
     },
     danger: {
-      backgroundColor: "color-mix(in srgb, #ef4444 14%, transparent)",
-      color: "#b91c1c",
-      border: "1px solid color-mix(in srgb, #ef4444 30%, transparent)",
+      backgroundColor: "#fee2e2",
+      color: "#991b1b",
+      border: "1px solid #fca5a5",
     },
     warning: {
-      backgroundColor: "color-mix(in srgb, #f59e0b 18%, transparent)",
-      color: "#b45309",
-      border: "1px solid color-mix(in srgb, #f59e0b 35%, transparent)",
+      backgroundColor: "#fef3c7",
+      color: "#92400e",
+      border: "1px solid #fcd34d",
     },
     info: {
-      backgroundColor: "color-mix(in srgb, #3b82f6 18%, transparent)",
-      color: "#1d4ed8",
-      border: "1px solid color-mix(in srgb, #3b82f6 35%, transparent)",
+      backgroundColor: "#dbeafe",
+      color: "#1e40af",
+      border: "1px solid #93c5fd",
     },
   };
 
