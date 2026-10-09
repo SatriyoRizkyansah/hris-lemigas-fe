@@ -349,6 +349,13 @@ export interface DanaOperasionalItemDto {
   sisa_saldo?: number;
   id_unit_koordinator?: object | null;
   nama_unit_koordinator?: object | null;
+  kategori_kamar?:
+    | "P1_PNS_NON_PNS"
+    | "P2_KP3"
+    | "OPS_KANTOR"
+    | "OPS_KP3"
+    | "MULOS_SPI"
+    | "LAINNYA";
   /** @format date-time */
   created_at?: string;
   /** @format date-time */
@@ -365,6 +372,17 @@ export interface CreateDanaOperasionalDto {
    * @example 200000000
    */
   total_plafon: number;
+  /**
+   * Kategori kamar wallet
+   * @example "LAINNYA"
+   */
+  kategori_kamar?:
+    | "P1_PNS_NON_PNS"
+    | "P2_KP3"
+    | "OPS_KANTOR"
+    | "OPS_KP3"
+    | "MULOS_SPI"
+    | "LAINNYA";
 }
 
 export interface UpdateDanaOperasionalDto {
@@ -584,7 +602,7 @@ export interface CreateUserDto {
    */
   password: string;
   /** @example "KOORDINATOR" */
-  role: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN";
+  role: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN";
   /** Unit kerja (koordinator unit aktif) */
   id_unit_kerja?: string;
   /** @default "AKTIF" */
@@ -595,10 +613,12 @@ export interface UpdateUserDto {
   nama?: string;
   /** @minLength 6 */
   password?: string;
-  role?: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN";
+  role?: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN";
   id_unit_kerja?: string;
   status?: "AKTIF" | "NONAKTIF";
 }
+
+export type DistributeMarginDto = object;
 
 export type QueryParamsType = Record<string | number, any>;
 export type ResponseFormat = keyof Omit<Body, "body" | "bodyUsed">;
@@ -1516,6 +1536,29 @@ export class Api<
      * No description
      *
      * @tags Master - RO
+     * @name RoControllerGetLedger
+     * @summary Get ledger RO (Superadmin, Koordinator)
+     * @request GET:/api/ro/{id}/ledger
+     * @secure
+     */
+    roControllerGetLedger: (id: string, params: RequestParams = {}) =>
+      this.request<
+        StandartResponse & {
+          data?: object;
+        },
+        void
+      >({
+        path: `/api/ro/${id}/ledger`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - RO
      * @name RoControllerUploadRab
      * @summary Upload RAB RO (Superadmin, Koordinator)
      * @request POST:/api/ro/{id}/rab
@@ -1761,6 +1804,32 @@ export class Api<
         path: `/api/dana-operasional/${id}`,
         method: "DELETE",
         secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Dana Operasional
+     * @name DanaOperasionalControllerGetLedger
+     * @summary Get ledger Dana Operasional (Superadmin, Koordinator)
+     * @request GET:/api/dana-operasional/{id}/ledger
+     * @secure
+     */
+    danaOperasionalControllerGetLedger: (
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        StandartResponse & {
+          data?: object;
+        },
+        void
+      >({
+        path: `/api/dana-operasional/${id}/ledger`,
+        method: "GET",
+        secure: true,
+        format: "json",
         ...params,
       }),
   };
@@ -2396,7 +2465,7 @@ export class Api<
         limit?: number;
         /** @default 1 */
         page?: number;
-        role?: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN";
+        role?: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN";
         status?: "AKTIF" | "NONAKTIF";
       },
       params: RequestParams = {},
@@ -2557,6 +2626,56 @@ export class Api<
       this.request<void, any>({
         path: `/api/uploaded/${path}`,
         method: "GET",
+        ...params,
+      }),
+  };
+  finance = {
+    /**
+     * No description
+     *
+     * @tags Finance
+     * @name FinanceControllerDistribute
+     * @summary Distribusi margin otomatis (Superadmin)
+     * @request POST:/api/finance/distribute-margin
+     * @secure
+     */
+    financeControllerDistribute: (
+      data: DistributeMarginDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/finance/distribute-margin`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+  };
+  sumberDana = {
+    /**
+     * No description
+     *
+     * @tags Sumber Dana
+     * @name SumberDanaControllerGetAvailable
+     * @summary Get available funding sources scoped by unit (Superadmin, Koordinator, KEUANGAN)
+     * @request GET:/api/sumber-dana/available
+     * @secure
+     */
+    sumberDanaControllerGetAvailable: (
+      query?: {
+        /** Filter by unit_kerja_id (koordinator scope) */
+        unit_kerja_id?: string;
+        /** @example 2026 */
+        tahun_fiscal?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/sumber-dana/available`,
+        method: "GET",
+        query: query,
+        secure: true,
         ...params,
       }),
   };

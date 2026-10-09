@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, Grid, TextField, Typography } from "@mui/material";
+import { Box, Divider, FormControl, Grid, InputLabel, ListSubheader, MenuItem, Select, TextField, Typography } from "@mui/material";
 import { AddOutlined, EditOutlined, BlockOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
 import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
@@ -402,10 +402,80 @@ export function AlokasiGajiPage() {
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="Periode Tahun" value={form.periode_tahun} onChange={(v: string) => set_field("periode_tahun", v)} required type="number" disabled={Boolean(editing)} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <SearchableSelect label="Sumber Dana" value={String(form.sumber_dana ?? "RO")} options={SUMBER_DANA_OPTIONS} onChange={(v) => set_field("sumber_dana", v)} required />
+
+          {/* Grouped sumber dana: RO (Direct Cost) dan Dana Operasional (Margin) */}
+          <Grid size={{ xs: 12 }}>            <FormControl fullWidth size="small" required>
+              <InputLabel shrink={Boolean(form.id_ro || form.id_dana_operasional || form.sumber_dana)}>
+                Sumber Dana
+              </InputLabel>
+              <Select
+                value={
+                  form.sumber_dana === "RO" && form.id_ro
+                    ? `RO::${form.id_ro}`
+                    : form.sumber_dana === "OPERASIONAL" && form.id_dana_operasional
+                    ? `DO::${form.id_dana_operasional}`
+                    : ""
+                }
+                label="Sumber Dana"
+                displayEmpty
+                onChange={(e) => {
+                  const val = String(e.target.value);
+                  if (val.startsWith("RO::")) {
+                    set_field("sumber_dana", "RO");
+                    set_field("id_ro", val.replace("RO::", ""));
+                    set_field("id_dana_operasional", "");
+                  } else if (val.startsWith("DO::")) {
+                    set_field("sumber_dana", "OPERASIONAL");
+                    set_field("id_dana_operasional", val.replace("DO::", ""));
+                    set_field("id_ro", "");
+                  }
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-notchedOutline": { borderColor: "var(--border)" },
+                  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "var(--muted-foreground)" },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary)" },
+                }}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 320, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" } } }}
+              >
+                {/* Group: RO */}
+                <ListSubheader sx={{ bgcolor: "var(--muted)", color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.5, lineHeight: "28px", px: 2 }}>
+                  ▸ RO — DIRECT COST
+                </ListSubheader>
+                {ro_query.is_loading ? (
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Memuat RO...</MenuItem>
+                ) : ro_options.length === 0 ? (
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Tidak ada RO tersedia</MenuItem>
+                ) : (
+                  ro_options.map((r) => (
+                    <MenuItem key={r.value} value={`RO::${r.value}`} sx={{ fontSize: "0.85rem", pl: 3, "&.Mui-selected": { bgcolor: "color-mix(in srgb, var(--primary) 12%, transparent)" } }}>
+                      {r.label}
+                    </MenuItem>
+                  ))
+                )}
+
+                <Divider sx={{ my: 0.5 }} />
+
+                {/* Group: Dana Operasional */}
+                <ListSubheader sx={{ bgcolor: "var(--muted)", color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.5, lineHeight: "28px", px: 2 }}>
+                  ▸ DANA OPERASIONAL — MARGIN
+                </ListSubheader>
+                {do_query.is_loading ? (
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Memuat Dana Operasional...</MenuItem>
+                ) : do_options.length === 0 ? (
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Tidak ada Dana Operasional tersedia</MenuItem>
+                ) : (
+                  do_options.map((d) => (
+                    <MenuItem key={d.value} value={`DO::${d.value}`} sx={{ fontSize: "0.85rem", pl: 3, "&.Mui-selected": { bgcolor: "color-mix(in srgb, var(--primary) 12%, transparent)" } }}>
+                      {d.label}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6 }}>
+
+          {/* Jumlah */}
+          <Grid size={{ xs: 12 }}>
             <TextField
               label="Jumlah (Rp)"
               size="small"
@@ -422,15 +492,6 @@ export function AlokasiGajiPage() {
               slotProps={{ formHelperText: { sx: { color: "var(--muted-foreground)", fontSize: "0.72rem", ml: 0 } } }}
             />
           </Grid>
-          {form.sumber_dana === "RO" ? (
-            <Grid size={{ xs: 12 }}>
-              <SearchableSelect label="Realisasi Organisasi (RO)" value={String(form.id_ro ?? "")} options={ro_options} onChange={(v) => set_field("id_ro", v)} loading={ro_query.is_loading} required />
-            </Grid>
-          ) : (
-            <Grid size={{ xs: 12 }}>
-              <SearchableSelect label="Dana Operasional" value={String(form.id_dana_operasional ?? "")} options={do_options} onChange={(v) => set_field("id_dana_operasional", v)} loading={do_query.is_loading} required />
-            </Grid>
-          )}
           <Grid size={{ xs: 12 }}>
             <Field label="Keterangan" value={form.keterangan} onChange={(v: string) => set_field("keterangan", v)} multiline />
           </Grid>

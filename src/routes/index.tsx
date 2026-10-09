@@ -47,7 +47,8 @@ function RequireRole({ roles, children }: { roles: HrisRole[]; children: ReactNo
 }
 
 const SUPERADMIN_KOORDINATOR: HrisRole[] = ["superadmin", "koordinator"];
-const ALL_ROLES: HrisRole[] = ["superadmin", "koordinator", "karyawan"];
+const SUPERADMIN_KOORDINATOR_KEUANGAN: HrisRole[] = ["superadmin", "koordinator", "keuangan"];
+const ALL_ROLES: HrisRole[] = ["superadmin", "koordinator", "keuangan", "karyawan"];
 
 // ─── App Routes ───────────────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ export function AppRoutes() {
           <Route
             path="/alokasi-gaji"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+              <RequireRole roles={SUPERADMIN_KOORDINATOR_KEUANGAN}>
                 <AlokasiGajiPage />
               </RequireRole>
             }
@@ -134,7 +135,7 @@ export function AppRoutes() {
           <Route
             path="/alokasi-gaji/rekap"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+              <RequireRole roles={SUPERADMIN_KOORDINATOR_KEUANGAN}>
                 <RekapAlokasiPage />
               </RequireRole>
             }

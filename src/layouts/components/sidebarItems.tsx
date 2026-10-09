@@ -11,6 +11,7 @@ import {
   SummarizeOutlined as RekapIcon,
   AdminPanelSettingsOutlined as UsersIcon,
   AccountBoxOutlined as AccountBoxIcon,
+  ReceiptLongOutlined as TagihanIcon,
 } from "@mui/icons-material";
 
 export interface NavItem {
@@ -30,17 +31,19 @@ export interface SidebarSection {
   items: NavItem[];
 }
 
-// ─── Resolve role dari akses JWT (role.nama backend: Superadmin/Koordinator/Karyawan) ──
+// ─── Resolve role dari akses JWT ──────────────────────────────────────────────
 export const resolve_menu_role_from_akses = (aksesLabel?: string): MenuRole => {
   const label = (aksesLabel ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (label.includes("superadmin") || label.includes("admin")) return "superadmin";
   if (label.includes("koordinator")) return "koordinator";
+  if (label.includes("keuangan")) return "keuangan";
   return "karyawan";
 };
 
 // ─── Home path per role ───────────────────────────────────────────────────────
 export const get_role_home_path = (role: MenuRole): string => {
   if (role === "karyawan") return "/profil";
+  if (role === "keuangan") return "/alokasi-gaji/rekap";
   return "/";
 };
 
@@ -60,6 +63,12 @@ const transaksiItems: NavItem[] = [
   { title: "SK", icon: <SkIcon fontSize="small" />, path: "/sk" },
   { title: "Alokasi Gaji", icon: <AlokasiIcon fontSize="small" />, path: "/alokasi-gaji" },
   { title: "Rekap Alokasi", icon: <RekapIcon fontSize="small" />, path: "/alokasi-gaji/rekap" },
+];
+
+// Menu khusus Keuangan (Juru Bayar)
+const keuanganTransaksiItems: NavItem[] = [
+  { title: "Tagihan Alokasi", icon: <TagihanIcon fontSize="small" />, path: "/alokasi-gaji" },
+  { title: "Rekap BLU", icon: <RekapIcon fontSize="small" />, path: "/alokasi-gaji/rekap" },
 ];
 
 const sistemItems: NavItem[] = [
@@ -83,13 +92,21 @@ const koordinatorSections: SidebarSection[] = [
   { key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] },
 ];
 
-const karyawanSections: SidebarSection[] = [{ key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] }];
+const keuanganSections: SidebarSection[] = [
+  { key: "transaksi", title: "Keuangan", abbreviation: "KU", items: keuanganTransaksiItems },
+  { key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] },
+];
+
+const karyawanSections: SidebarSection[] = [
+  { key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] },
+];
 
 // ─── Exported helpers ─────────────────────────────────────────────────────────
 
 export const get_sidebar_sections = (role: MenuRole): SidebarSection[] => {
   if (role === "superadmin") return superadminSections;
   if (role === "koordinator") return koordinatorSections;
+  if (role === "keuangan") return keuanganSections;
   return karyawanSections;
 };
 

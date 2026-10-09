@@ -51,6 +51,7 @@ export function DanaOperasionalPage() {
     api_query: [{ query: search || undefined, page: page + 1, limit: rows_per_page, id_unit_koordinator: id_unit || undefined } as any],
   });
   const detail_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetDetail", api_query: [detail_id as any] as any, should_running_if: Boolean(detail_id) } as any);
+  const ledger_do_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetLedger", api_query: [detail_id as string], should_running_if: Boolean(detail_id) } as any);
   const unit_query = use_query({ api_tag: "masterUnitKerja", api_method: "unitKerjaGetControllerGetData", api_query: [{ tipe_unit: "KOORDINATOR", limit: 200 } as any] });
 
   const body: any = list_query.response ?? {};
@@ -94,10 +95,13 @@ export function DanaOperasionalPage() {
 
   const detail: any = (detail_query.response as any)?.data ?? (detail_query.response as any) ?? null;
   const d = detail?.data ?? detail;
-  const ledger: any[] = d?.transaksi_list ?? d?.list ?? [];
-  const total_debit = d?.total_debit ?? ledger.reduce((s: number, r: any) => s + Number(r.debit ?? 0), 0);
-  const total_kredit = d?.total_kredit ?? ledger.reduce((s: number, r: any) => s + Number(r.kredit ?? 0), 0);
-  const saldo_ledger = d?.saldo_ledger ?? total_kredit - total_debit;
+
+  // Ledger dari endpoint /ledger — running balance dari backend
+  const ledger_resp: any = (ledger_do_query.response as any)?.data ?? (ledger_do_query.response as any) ?? null;
+  const ledger: any[] = ledger_resp?.list ?? ledger_resp ?? [];
+  const total_debit = ledger_resp?.total_debit ?? 0;
+  const total_kredit = ledger_resp?.total_kredit ?? 0;
+  const saldo_ledger = ledger_resp?.saldo_ledger ?? 0;
   const alokasi_list: any[] = d?.alokasi_list ?? [];
 
   const handle_trx_submit = async () => {
@@ -120,6 +124,7 @@ export function DanaOperasionalPage() {
       setTrxEditing(null);
       setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
       detail_query.call_back();
+      ledger_do_query.call_back();
     } catch (e: any) {
       alert(e?.message ?? "Gagal simpan transaksi");
     }
@@ -131,6 +136,7 @@ export function DanaOperasionalPage() {
       const res = await fetch(`/api/dana-operasional/${detail_id}/transaksi/${tid}`, { method: "DELETE", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
       detail_query.call_back();
+      ledger_do_query.call_back();
     } catch (e: any) {
       alert(e?.message ?? "Gagal hapus transaksi");
     }
@@ -173,7 +179,7 @@ export function DanaOperasionalPage() {
     { id: "tanggal", label: "Tanggal", width: 110, render: (_: any, r: any) => format_date(r.tanggal) },
     { id: "debit", label: "Debit", align: "right", width: 120, render: (_: any, r: any) => (Number(r.debit) ? format_rupiah(r.debit) : "-") },
     { id: "kredit", label: "Kredit", align: "right", width: 120, render: (_: any, r: any) => (Number(r.kredit) ? format_rupiah(r.kredit) : "-") },
-    { id: "saldo", label: "Saldo", align: "right", width: 120, render: (_: any, r: any) => format_rupiah(r.saldo ?? 0) },
+    { id: "saldo", label: "Saldo Berjalan", align: "right", width: 120, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem", color: (r.saldo ?? 0) < 0 ? "#dc2626" : "inherit" }}>{format_rupiah(r.saldo ?? 0)}</Box> },
     { id: "keterangan", label: "Keterangan", width: 160, render: (_: any, r: any) => <Box sx={{ wordBreak: "break-word", fontSize: "0.8rem" }}>{String(r.keterangan ?? "-")}</Box> },
     ...(can_manage_ledger
       ? [
@@ -322,28 +328,21 @@ export function DanaOperasionalPage() {
           <InfoCard message="Memuat detail..." variant="info" />
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5, p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--muted)" }}>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>UNIT KOORDINATOR</Typography>
-                <Typography sx={{ fontSize: "0.9rem", fontWeight: 700 }}>{String(d.nama_unit_koordinator ?? "-")}</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 1.5 }}>
+              <Box sx={{ p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>PLAFON AWAL</Typography>
+                <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, mt: 0.5 }}>{format_rupiah(d.total_plafon)}</Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>{String(d.nama_unit_koordinator ?? "-")} · {String(d.tahun_fiscal ?? "-")}</Typography>
               </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TAHUN FISCAL</Typography>
-                <Typography sx={{ fontSize: "0.85rem" }}>{String(d.tahun_fiscal ?? "-")}</Typography>
+              <Box sx={{ p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>TOTAL PENGELUARAN</Typography>
+                <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, mt: 0.5, color: total_debit > 0 ? "#dc2626" : undefined }}>{format_rupiah(total_debit)}</Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>Kredit masuk: {format_rupiah(total_kredit)}</Typography>
               </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>ANGGARAN</Typography>
-                <Typography sx={{ fontSize: "0.85rem", fontWeight: 700 }}>{format_rupiah(d.total_plafon)}</Typography>
-                <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>
-                  Terpakai {format_rupiah(d.total_terpakai)} · Sisa {format_rupiah(d.sisa_saldo)}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>SALDO LEDGER</Typography>
-                <Typography sx={{ fontSize: "0.85rem", fontWeight: 700 }}>{format_rupiah(saldo_ledger)}</Typography>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
-                  Debit {format_rupiah(total_debit)} · Kredit {format_rupiah(total_kredit)}
-                </Typography>
+              <Box sx={{ p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: saldo_ledger < 0 ? "#fef2f2" : "var(--card)", borderColor: saldo_ledger < 0 ? "#fecaca" : "var(--border)" }}>
+                <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>SISA SALDO AKHIR</Typography>
+                <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, mt: 0.5, color: saldo_ledger < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(saldo_ledger)}</Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>Running balance dari ledger</Typography>
               </Box>
             </Box>
             <Box>
@@ -374,8 +373,8 @@ export function DanaOperasionalPage() {
                   <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, color: "#16a34a" }}>{format_rupiah(total_kredit)}</Typography>
                 </Box>
                 <Box sx={{ textAlign: "right" }}>
-                  <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>SALDO</Typography>
-                  <Typography sx={{ fontSize: "0.9rem", fontWeight: 800 }}>{format_rupiah(saldo_ledger)}</Typography>
+                  <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>SISA SALDO AKHIR</Typography>
+                  <Typography sx={{ fontSize: "0.9rem", fontWeight: 800, color: saldo_ledger < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(saldo_ledger)}</Typography>
                 </Box>
               </Box>
             </Box>

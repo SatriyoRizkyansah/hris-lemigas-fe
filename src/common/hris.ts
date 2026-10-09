@@ -2,13 +2,14 @@ import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
 // ─── Role HRIS ────────────────────────────────────────────────────────────────
 
-export type HrisRole = "superadmin" | "koordinator" | "karyawan";
+export type HrisRole = "superadmin" | "koordinator" | "keuangan" | "karyawan";
 
 export const resolve_current_role = (): HrisRole => {
   const akses = (auth_signal.value.selectedAuthorization?.akses ?? (auth_signal.value.data?.akses as string | undefined) ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
   if (akses.includes("superadmin") || akses.includes("admin")) return "superadmin";
   if (akses.includes("koordinator")) return "koordinator";
+  if (akses.includes("keuangan")) return "keuangan";
   return "karyawan";
 };
 

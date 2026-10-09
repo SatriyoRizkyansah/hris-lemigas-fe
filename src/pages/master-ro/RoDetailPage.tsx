@@ -44,13 +44,23 @@ export function RoDetailPage() {
     should_running_if: Boolean(id),
   } as any);
 
+  // Ledger dari endpoint khusus — saldo_berjalan dari backend
+  const ledger_query = use_query({
+    api_tag: "masterRo",
+    api_method: "roControllerGetLedger",
+    api_query: [id as string],
+    should_running_if: Boolean(id),
+  } as any);
+
   const detail: any = (detail_query.response as any)?.data ?? (detail_query.response as any) ?? null;
   const d = detail?.data ?? detail;
 
-  const ledger: any[] = d?.transaksi_list ?? d?.list ?? [];
-  const total_debit = d?.total_debit ?? ledger.reduce((s: number, r: any) => s + Number(r.debit ?? 0), 0);
-  const total_kredit = d?.total_kredit ?? ledger.reduce((s: number, r: any) => s + Number(r.kredit ?? 0), 0);
-  const saldo_ledger = d?.saldo_ledger ?? total_kredit - total_debit;
+  // Ledger dari endpoint /ledger — running balance dari backend
+  const ledger_resp: any = (ledger_query.response as any)?.data ?? (ledger_query.response as any) ?? null;
+  const ledger: any[] = ledger_resp?.list ?? ledger_resp ?? [];
+  const total_debit = ledger_resp?.total_debit ?? 0;
+  const total_kredit = ledger_resp?.total_kredit ?? 0;
+  const saldo_ledger = ledger_resp?.saldo_ledger ?? 0;
   const alokasi_list: any[] = d?.alokasi_list ?? [];
 
   // balance breakdown from backend (new fields) fallback to computed
@@ -58,8 +68,6 @@ export function RoDetailPage() {
   const total_terpakai = Number(d?.total_terpakai ?? 0);
   const sisa_saldo = Number(d?.sisa_saldo ?? total_plafon - total_terpakai);
   const alokasi_terpakai = Number(d?.alokasi_terpakai ?? 0);
-  const trx_debit = Number(d?.trx_debit ?? total_debit);
-  const trx_kredit = Number(d?.trx_kredit ?? total_kredit);
   const pct = total_plafon > 0 ? Math.min(100, Math.round((total_terpakai / total_plafon) * 100)) : 0;
 
   const handle_rab_upload = async () => {
@@ -100,6 +108,7 @@ export function RoDetailPage() {
       setTrxEditing(null);
       setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
       detail_query.call_back();
+      ledger_query.call_back();
     } catch (e: any) {
       alert(e?.message ?? "Gagal simpan transaksi");
     }
@@ -112,6 +121,7 @@ export function RoDetailPage() {
       const res = await fetch(`/api/ro/${id}/transaksi/${tid}`, { method: "DELETE", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
       detail_query.call_back();
+      ledger_query.call_back();
     } catch (e: any) {
       alert(e?.message ?? "Gagal hapus transaksi");
     }
@@ -136,7 +146,7 @@ export function RoDetailPage() {
       width: 130,
       render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontSize: "0.82rem", color: Number(r.kredit) ? "#16a34a" : undefined }}>{Number(r.kredit) ? format_rupiah(r.kredit) : "-"}</Box>,
     },
-    { id: "saldo", label: "Saldo", align: "right", width: 130, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem" }}>{format_rupiah(r.saldo ?? 0)}</Box> },
+    { id: "saldo", label: "Saldo Berjalan", align: "right", width: 130, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem", color: (r.saldo ?? 0) < 0 ? "#dc2626" : "inherit" }}>{format_rupiah(r.saldo ?? 0)}</Box> },
     { id: "keterangan", label: "Keterangan", width: 180, render: (_: any, r: any) => <Box sx={{ fontSize: "0.8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.keterangan ?? "-")}</Box> },
     ...(can_manage_ledger
       ? [
@@ -208,17 +218,17 @@ export function RoDetailPage() {
         {/* Anggaran summary */}
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 2 }}>
           <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>ANGGARAN (PLAFON)</Typography>
+            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>PLAFON AWAL</Typography>
             <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5 }}>{format_rupiah(total_plafon)}</Typography>
             <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)", mt: 0.5 }}>
               Tahun {String(d.tahun_fiscal ?? "-")} · {String(d.kode_ro ?? "-")}
             </Typography>
           </Box>
           <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>TERPAKAI</Typography>
+            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>TOTAL PENGELUARAN</Typography>
             <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: total_terpakai > 0 ? "#dc2626" : undefined }}>{format_rupiah(total_terpakai)}</Typography>
             <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>
-              Alokasi {format_rupiah(alokasi_terpakai)} · Transaksi net {format_rupiah(trx_debit - trx_kredit)} (D {format_rupiah(trx_debit)} / K {format_rupiah(trx_kredit)})
+              Alokasi {format_rupiah(alokasi_terpakai)} · Debit ledger {format_rupiah(total_debit)} · Kredit {format_rupiah(total_kredit)}
             </Typography>
             <Box sx={{ mt: 1.5 }}>
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
@@ -229,9 +239,9 @@ export function RoDetailPage() {
             </Box>
           </Box>
           <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: sisa_saldo < 0 ? "#fef2f2" : "var(--card)", borderColor: sisa_saldo < 0 ? "#fecaca" : "var(--border)" }}>
-            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>SISA SALDO</Typography>
+            <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>SISA SALDO AKHIR</Typography>
             <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: sisa_saldo < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(sisa_saldo)}</Typography>
-            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Plafon − Terpakai (alokasi + transaksi)</Typography>
+            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Saldo akhir running balance dari ledger</Typography>
             {sisa_saldo < 0 && <Typography sx={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600, mt: 0.5 }}>Over budget</Typography>}
           </Box>
         </Box>
