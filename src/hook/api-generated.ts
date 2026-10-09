@@ -240,6 +240,17 @@ export interface ProyekItemDto {
   updated_at?: string;
 }
 
+export interface RoInputDto {
+  /** @example "Operasional Pengeboran" */
+  nama_ro: string;
+  /** @example "RO-2026-001" */
+  kode_ro?: string;
+  /** ID unit koordinator pemilik RO */
+  id_unit_koordinator: string;
+  /** @example 500000000 */
+  plafon: number;
+}
+
 export interface CreateProyekDto {
   /** @example "PRJ-2026-001" */
   kode_proyek: string;
@@ -264,6 +275,8 @@ export interface CreateProyekDto {
    * @example 250000000
    */
   total_margin?: number;
+  /** Daftar RO awal — total plafon harus = total_direct_cost */
+  ro_list?: RoInputDto[];
 }
 
 export interface UpdateProyekDto {
