@@ -46,9 +46,14 @@ function RequireRole({ roles, children }: { roles: HrisRole[]; children: ReactNo
   return <>{children}</>;
 }
 
+const SUPERADMIN_ONLY: HrisRole[] = ["superadmin"];
 const SUPERADMIN_KOORDINATOR: HrisRole[] = ["superadmin", "koordinator"];
-const SUPERADMIN_KOORDINATOR_KEUANGAN: HrisRole[] = ["superadmin", "koordinator", "keuangan"];
-const ALL_ROLES: HrisRole[] = ["superadmin", "koordinator", "keuangan", "karyawan"];
+// FINANCE_TEAM defined per spec (superadmin+keuangan) — used for future finance-only guards
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const FINANCE_TEAM: HrisRole[] = ["superadmin", "keuangan"];
+const ALL_MANAGEMENT: HrisRole[] = ["superadmin", "koordinator", "keuangan"];
+const EVERYONE: HrisRole[] = ["superadmin", "koordinator", "keuangan", "karyawan"];
+void FINANCE_TEAM;
 
 // ─── App Routes ───────────────────────────────────────────────────────────────
 
@@ -109,7 +114,7 @@ export function AppRoutes() {
           <Route
             path="/dana-operasional"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+              <RequireRole roles={ALL_MANAGEMENT}>
                 <DanaOperasionalPage />
               </RequireRole>
             }
@@ -127,7 +132,7 @@ export function AppRoutes() {
           <Route
             path="/alokasi-gaji"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR_KEUANGAN}>
+              <RequireRole roles={ALL_MANAGEMENT}>
                 <AlokasiGajiPage />
               </RequireRole>
             }
@@ -135,7 +140,7 @@ export function AppRoutes() {
           <Route
             path="/alokasi-gaji/rekap"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR_KEUANGAN}>
+              <RequireRole roles={ALL_MANAGEMENT}>
                 <RekapAlokasiPage />
               </RequireRole>
             }
@@ -145,7 +150,7 @@ export function AppRoutes() {
           <Route
             path="/pengguna"
             element={
-              <RequireRole roles={["superadmin"]}>
+              <RequireRole roles={SUPERADMIN_ONLY}>
                 <UsersPage />
               </RequireRole>
             }
@@ -153,7 +158,7 @@ export function AppRoutes() {
           <Route
             path="/profil"
             element={
-              <RequireRole roles={ALL_ROLES}>
+              <RequireRole roles={EVERYONE}>
                 <ProfilPage />
               </RequireRole>
             }

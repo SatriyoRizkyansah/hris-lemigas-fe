@@ -71,6 +71,8 @@ const keuanganTransaksiItems: NavItem[] = [
   { title: "Rekap BLU", icon: <RekapIcon fontSize="small" />, path: "/alokasi-gaji/rekap" },
 ];
 
+const keuanganMasterItems: NavItem[] = [{ title: "Dana Operasional", icon: <DanaIcon fontSize="small" />, path: "/dana-operasional" }];
+
 const sistemItems: NavItem[] = [
   { title: "Pengguna", icon: <UsersIcon fontSize="small" />, path: "/pengguna" },
   { title: "Profil Saya", icon: <AccountBoxIcon fontSize="small" />, path: "/profil" },
@@ -93,13 +95,13 @@ const koordinatorSections: SidebarSection[] = [
 ];
 
 const keuanganSections: SidebarSection[] = [
+  { key: "overview", title: "Overview", abbreviation: "OV", items: overviewItems },
+  { key: "master", title: "Master Data", abbreviation: "MD", items: keuanganMasterItems },
   { key: "transaksi", title: "Keuangan", abbreviation: "KU", items: keuanganTransaksiItems },
   { key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] },
 ];
 
-const karyawanSections: SidebarSection[] = [
-  { key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] },
-];
+const karyawanSections: SidebarSection[] = [{ key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] }];
 
 // ─── Exported helpers ─────────────────────────────────────────────────────────
 
