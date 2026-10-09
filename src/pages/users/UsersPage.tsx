@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Grid, TextField, Typography } from "@mui/material";
+import { Box, Grid, TextField, Typography, Checkbox, FormControlLabel, FormGroup, Chip, Stack, FormLabel } from "@mui/material";
 import { AddOutlined, EditOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
 import { ActionButton, ActionButtonGroup, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
@@ -83,6 +83,7 @@ export function UsersPage() {
       nama: "",
       password: "",
       role: "KARYAWAN",
+      roles: ["KARYAWAN"],
       id_unit_kerja: "",
       status: "AKTIF",
     });
@@ -90,42 +91,64 @@ export function UsersPage() {
   };
 
   const open_edit = (row: any) => {
+    const allRoles: string[] = row.roles?.length ? row.roles : row.role ? [row.role] : ["KARYAWAN"];
     setEditing(row);
     setForm({
       email: row.email ?? "",
       nama: row.nama ?? "",
       password: "",
-      role: row.role ?? "KARYAWAN",
+      role: row.role ?? allRoles[0] ?? "KARYAWAN",
+      roles: allRoles,
       id_unit_kerja: row.id_unit_kerja ?? "",
       status: row.status ?? "AKTIF",
     });
     set_modal_open(true);
   };
 
+  const toggle_role = (roleVal: string, checked: boolean) => {
+    setForm((f: any) => {
+      const current: string[] = Array.isArray(f.roles) ? f.roles : f.role ? [f.role] : [];
+      let next: string[];
+      if (checked) next = current.includes(roleVal) ? current : [...current, roleVal];
+      else {
+        if (roleVal === f.role) return f;
+        next = current.filter((r) => r !== roleVal);
+      }
+      if (!next.includes(f.role)) next = [f.role, ...next];
+      return { ...f, roles: next };
+    });
+  };
+
+  const handle_default_role_change = (v: string) => {
+    setForm((f: any) => {
+      const current: string[] = Array.isArray(f.roles) ? f.roles : [];
+      const next = current.includes(v) ? current : [...current, v];
+      return { ...f, role: v, roles: next };
+    });
+  };
+
   const submit = () => {
-    if (editing) {
-      update_mutation([
-        editing.id,
-        {
-          nama: form.nama,
-          password: form.password || undefined,
-          role: form.role,
-          id_unit_kerja: form.id_unit_kerja || undefined,
-          status: form.status,
-        },
-      ]);
-    } else {
+    const payload: any = {
+      nama: form.nama,
+      password: form.password || undefined,
+      role: form.role,
+      roles: form.roles,
+      id_unit_kerja: form.id_unit_kerja || undefined,
+      status: form.status,
+    };
+    if (editing) update_mutation([editing.id, payload]);
+    else
       create_mutation([
         {
           email: form.email,
           nama: form.nama,
           password: form.password,
           role: form.role,
+          roles: form.roles,
           id_unit_kerja: form.id_unit_kerja || undefined,
           status: form.status,
         },
       ]);
-    }
   };
 
   const columns: Column<any>[] = [
@@ -143,7 +166,16 @@ export function UsersPage() {
     {
       id: "role",
       label: "Role",
-      render: (_, row) => <StatusChip label={String(row.nama_role ?? row.role ?? "-")} variant={row.role === "SUPERADMIN" ? "danger" : row.role === "KOORDINATOR" ? "warning" : "info"} size="small" />,
+      render: (_, row) => {
+        const roles: string[] = row.roles?.length ? row.roles : row.role ? [row.role] : [];
+        return (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {roles.map((r: string) => (
+              <StatusChip key={r} label={String(r)} variant={r === "SUPERADMIN" ? "danger" : r === "KOORDINATOR" ? "warning" : r === "KEUANGAN" ? "success" : "info"} size="small" />
+            ))}
+          </Stack>
+        );
+      },
     },
     { id: "nama_unit_kerja", label: "Unit Kerja", hideMobile: true, render: (_, row) => String(row.nama_unit_kerja ?? "-") },
     {
@@ -254,10 +286,41 @@ export function UsersPage() {
             <Field label={editing ? "Password Baru (opsional)" : "Password"} value={form.password} onChange={(v: string) => set_field("password", v)} required={!editing} type="password" />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <SearchableSelect label="Role" value={String(form.role ?? "")} options={ROLE_OPTIONS} onChange={(v) => set_field("role", v)} required />
+            <SearchableSelect label="Role Default" value={String(form.role ?? "")} options={ROLE_OPTIONS} onChange={handle_default_role_change} required />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <SearchableSelect label="Status" value={String(form.status ?? "AKTIF")} options={STATUS_AKTIF_OPTIONS} onChange={(v) => set_field("status", v)} />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, p: 1.5 }}>
+              <FormLabel sx={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--foreground)" }}>Role Tambahan</FormLabel>
+              <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mb: 1 }}>Default role otomatis terpilih. Centang role tambahan.</Typography>
+              <FormGroup row>
+                {ROLE_OPTIONS.map((opt) => {
+                  const isDefault = form.role === opt.value;
+                  const checked = isDefault || (Array.isArray(form.roles) && form.roles.includes(opt.value));
+                  return (
+                    <FormControlLabel
+                      key={opt.value}
+                      control={<Checkbox size="small" checked={checked} disabled={isDefault} onChange={(e) => toggle_role(opt.value, e.target.checked)} />}
+                      label={
+                        <Typography sx={{ fontSize: "0.8rem" }}>
+                          {opt.label}
+                          {isDefault ? " (default)" : ""}
+                        </Typography>
+                      }
+                    />
+                  );
+                })}
+              </FormGroup>
+              {Array.isArray(form.roles) && form.roles.length > 0 && (
+                <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                  {form.roles.map((r: string) => (
+                    <Chip key={r} label={r} size="small" color={r === form.role ? "primary" : "default"} variant={r === form.role ? "filled" : "outlined"} />
+                  ))}
+                </Stack>
+              )}
+            </Box>
           </Grid>
           <Grid size={{ xs: 12 }}>
             <SearchableSelect label="Unit Kerja" value={String(form.id_unit_kerja ?? "")} options={unit_options} onChange={(v) => set_field("id_unit_kerja", v)} loading={unit_query.is_loading} placeholder="Tanpa unit kerja..." />

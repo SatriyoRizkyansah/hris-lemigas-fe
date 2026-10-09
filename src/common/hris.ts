@@ -78,6 +78,7 @@ export const ROLE_OPTIONS = [
   { label: "Superadmin", value: "SUPERADMIN" },
   { label: "Koordinator", value: "KOORDINATOR" },
   { label: "Karyawan", value: "KARYAWAN" },
+  { label: "Keuangan", value: "KEUANGAN" },
 ];
 
 export const STATUS_AKTIF_OPTIONS = [

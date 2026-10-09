@@ -582,6 +582,9 @@ export interface UserItemDto {
   nama: string;
   role: string;
   nama_role?: object | null;
+  /** @example ["SUPERADMIN","KEUANGAN"] */
+  roles: any[][];
+  roles_detail?: any[][];
   id_unit_kerja?: object | null;
   nama_unit_kerja?: object | null;
   status: string;
@@ -603,6 +606,8 @@ export interface CreateUserDto {
   password: string;
   /** @example "KOORDINATOR" */
   role: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN";
+  /** Role tambahan selain role default */
+  roles?: ("SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN")[];
   /** Unit kerja (koordinator unit aktif) */
   id_unit_kerja?: string;
   /** @default "AKTIF" */
@@ -613,7 +618,10 @@ export interface UpdateUserDto {
   nama?: string;
   /** @minLength 6 */
   password?: string;
+  /** Role default */
   role?: "SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN";
+  /** Daftar role (termasuk default). Jika diisi, akan sync UserRole */
+  roles?: ("SUPERADMIN" | "KOORDINATOR" | "KARYAWAN" | "KEUANGAN")[];
   id_unit_kerja?: string;
   status?: "AKTIF" | "NONAKTIF";
 }
