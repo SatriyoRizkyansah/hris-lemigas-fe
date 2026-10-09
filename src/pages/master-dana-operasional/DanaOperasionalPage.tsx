@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Box, Grid, TextField, Typography, Divider } from "@mui/material";
-import { AddOutlined, EditOutlined, DeleteOutlined, VisibilityOutlined } from "@mui/icons-material";
+import { Box, Grid, TextField, Typography, Divider, Chip } from "@mui/material";
+import { AddOutlined, EditOutlined, DeleteOutlined, VisibilityOutlined, AccountBalanceWalletOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, ConfirmDialog, DataTable, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton } from "../../components";
+import { ActionButton, ActionButtonGroup, ConfirmDialog, DataTable, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
-import { resolve_current_role, current_year, format_rupiah, format_date, unwrap_list, unwrap_pagination } from "../../common/hris";
+import { resolve_current_role, current_year, format_rupiah, format_date, unwrap_list, unwrap_pagination, kategori_kamar_label, kategori_kamar_percent, KATEGORI_KAMAR_OPTIONS } from "../../common/hris";
 import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
 function Field({ label, value, onChange, required, disabled, type }: any) {
@@ -26,13 +26,17 @@ function Field({ label, value, onChange, required, disabled, type }: any) {
 }
 
 export function DanaOperasionalPage() {
-  const can_edit = resolve_current_role() === "superadmin";
-  const can_manage_ledger = can_edit || resolve_current_role() === "koordinator";
+  const role = resolve_current_role();
+  const can_edit = role === "superadmin";
+  const can_manage_ledger = can_edit || role === "koordinator" || role === "keuangan";
+  const is_keuangan = role === "keuangan";
+  void is_keuangan;
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rows_per_page, set_rows_per_page] = useState(10);
   const [id_unit, setIdUnit] = useState("");
+  const [kategori_filter, setKategoriFilter] = useState("");
 
   const [modal_open, set_modal_open] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -48,7 +52,7 @@ export function DanaOperasionalPage() {
   const list_query = use_query({
     api_tag: "masterDanaOperasional",
     api_method: "danaOperasionalControllerGetData",
-    api_query: [{ query: search || undefined, page: page + 1, limit: rows_per_page, id_unit_koordinator: id_unit || undefined } as any],
+    api_query: [{ query: search || undefined, page: page + 1, limit: rows_per_page, id_unit_koordinator: id_unit || undefined, kategori_kamar: kategori_filter || undefined } as any],
   });
   const detail_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetDetail", api_query: [detail_id as any] as any, should_running_if: Boolean(detail_id) } as any);
   const ledger_do_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetLedger", api_query: [detail_id as string], should_running_if: Boolean(detail_id) } as any);
@@ -76,17 +80,17 @@ export function DanaOperasionalPage() {
 
   const open_create = () => {
     setEditing(null);
-    setForm({ id_unit_koordinator: "", tahun_fiscal: String(current_year()), total_plafon: "" });
+    setForm({ id_unit_koordinator: "", tahun_fiscal: String(current_year()), total_plafon: "", kategori_kamar: "LAINNYA" });
     set_modal_open(true);
   };
   const open_edit = (row: any) => {
     setEditing(row);
-    setForm({ id_unit_koordinator: row.id_unit_koordinator ?? "", tahun_fiscal: String(row.tahun_fiscal ?? current_year()), total_plafon: row.total_plafon ?? "" });
+    setForm({ id_unit_koordinator: row.id_unit_koordinator ?? row.unit_koordinator_id ?? "", tahun_fiscal: String(row.tahun_fiscal ?? current_year()), total_plafon: row.total_plafon ?? "", kategori_kamar: row.kategori_kamar ?? "LAINNYA" });
     set_modal_open(true);
   };
   const submit = () => {
     if (editing) update_mutation([editing.id, { total_plafon: Number(form.total_plafon) }]);
-    else create_mutation([{ id_unit_koordinator: form.id_unit_koordinator, tahun_fiscal: Number(form.tahun_fiscal), total_plafon: Number(form.total_plafon) }]);
+    else create_mutation([{ id_unit_koordinator: form.id_unit_koordinator, tahun_fiscal: Number(form.tahun_fiscal), total_plafon: Number(form.total_plafon), kategori_kamar: form.kategori_kamar || "LAINNYA" }]);
   };
   const open_detail = (row: any) => {
     setDetailId(String(row.id));
@@ -142,12 +146,35 @@ export function DanaOperasionalPage() {
     }
   };
 
+  // Aggregate per kamar for wallet cards (from current page rows)
+  const kamar_summary = (() => {
+    const map: Record<string, { total_plafon: number; total_terpakai: number; count: number }> = {};
+    rows.forEach((r: any) => {
+      const k = r.kategori_kamar ?? "LAINNYA";
+      if (!map[k]) map[k] = { total_plafon: 0, total_terpakai: 0, count: 0 };
+      map[k].total_plafon += Number(r.total_plafon ?? 0);
+      map[k].total_terpakai += Number(r.total_terpakai ?? 0);
+      map[k].count += 1;
+    });
+    return map;
+  })();
+
   const columns: Column<any>[] = [
     {
       id: "nama_unit_koordinator",
       label: "Unit Koordinator",
       sortable: true,
       render: (_: any, row: any) => <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)" }}>{String(row.nama_unit_koordinator ?? "-")}</Typography>,
+    },
+    {
+      id: "kategori_kamar",
+      label: "Kamar",
+      render: (_: any, row: any) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+          <StatusChip label={kategori_kamar_label(row.kategori_kamar)} variant={row.kategori_kamar === "LAINNYA" ? "neutral" : "info"} size="small" />
+          <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>{kategori_kamar_percent(row.kategori_kamar)}</Typography>
+        </Box>
+      ),
     },
     { id: "tahun_fiscal", label: "Tahun Fiscal", align: "center", render: (_: any, row: any) => String(row.tahun_fiscal ?? "-") },
     { id: "total_plafon", label: "Plafon", align: "right", render: (_: any, row: any) => format_rupiah(row.total_plafon) },
@@ -179,7 +206,13 @@ export function DanaOperasionalPage() {
     { id: "tanggal", label: "Tanggal", width: 110, render: (_: any, r: any) => format_date(r.tanggal) },
     { id: "debit", label: "Debit", align: "right", width: 120, render: (_: any, r: any) => (Number(r.debit) ? format_rupiah(r.debit) : "-") },
     { id: "kredit", label: "Kredit", align: "right", width: 120, render: (_: any, r: any) => (Number(r.kredit) ? format_rupiah(r.kredit) : "-") },
-    { id: "saldo", label: "Saldo Berjalan", align: "right", width: 120, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem", color: (r.saldo ?? 0) < 0 ? "#dc2626" : "inherit" }}>{format_rupiah(r.saldo ?? 0)}</Box> },
+    {
+      id: "saldo",
+      label: "Saldo Berjalan",
+      align: "right",
+      width: 120,
+      render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem", color: (r.saldo ?? 0) < 0 ? "#dc2626" : "inherit" }}>{format_rupiah(r.saldo ?? 0)}</Box>,
+    },
     { id: "keterangan", label: "Keterangan", width: 160, render: (_: any, r: any) => <Box sx={{ wordBreak: "break-word", fontSize: "0.8rem" }}>{String(r.keterangan ?? "-")}</Box> },
     ...(can_manage_ledger
       ? [
@@ -229,7 +262,48 @@ export function DanaOperasionalPage() {
         ) : undefined
       }
     >
-      <div style={{ padding: "20px 24px" }}>
+      <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* 5 Kamar wallet summary cards — visible for keuangan monitoring */}
+        {rows.length > 0 && (
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "1fr 1fr 1fr 1fr 1fr" }, gap: 1.5 }}>
+            {KATEGORI_KAMAR_OPTIONS.filter((o) => o.value !== "LAINNYA").map((opt) => {
+              const s = kamar_summary[opt.value];
+              const has = Boolean(s);
+              const sisa = has ? s.total_plafon - s.total_terpakai : 0;
+              const low = has && sisa < s.total_plafon * 0.15 && sisa >= 0;
+              const over = has && sisa < 0;
+              return (
+                <Box
+                  key={opt.value}
+                  onClick={() => {
+                    setKategoriFilter(opt.value);
+                    setPage(0);
+                  }}
+                  sx={{
+                    p: 1.75,
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: over ? "#fecaca" : low ? "#fde68a" : "var(--border)",
+                    bgcolor: over ? "#fef2f2" : low ? "#fffbeb" : "var(--card)",
+                    cursor: "pointer",
+                    opacity: has ? 1 : 0.55,
+                    transition: "all 0.15s",
+                    "&:hover": { borderColor: "var(--primary)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" },
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
+                    <AccountBalanceWalletOutlined sx={{ fontSize: 16, color: has ? "var(--primary)" : "var(--muted-foreground)" }} />
+                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.4, color: "var(--muted-foreground)" }}>{opt.label}</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: "0.95rem", fontWeight: 800, color: over ? "#dc2626" : "var(--foreground)" }}>{has ? format_rupiah(s.total_plafon) : "—"}</Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mt: 0.25 }}>{has ? `Terpakai ${format_rupiah(s.total_terpakai)} · Sisa ${format_rupiah(sisa)} · ${s.count} wallet` : "Belum ada wallet"}</Typography>
+                  {over && <Chip label="Over budget" size="small" color="error" sx={{ mt: 0.75, height: 18, fontSize: "0.65rem" }} />}
+                  {low && !over && <Chip label="Saldo menipis" size="small" color="warning" sx={{ mt: 0.75, height: 18, fontSize: "0.65rem" }} />}
+                </Box>
+              );
+            })}
+          </Box>
+        )}
         {list_query.error && !list_query.is_loading ? (
           <InfoCard message="Gagal memuat data dana operasional." variant="error" />
         ) : (
@@ -251,6 +325,16 @@ export function DanaOperasionalPage() {
                 options: [{ label: "Semua Unit", value: "" }, ...unit_options],
                 onChange: (v: string) => {
                   setIdUnit(v);
+                  setPage(0);
+                },
+              },
+              {
+                id: "kategori_kamar",
+                label: "Kamar",
+                value: kategori_filter,
+                options: [{ label: "Semua Kamar", value: "" }, ...KATEGORI_KAMAR_OPTIONS],
+                onChange: (v: string) => {
+                  setKategoriFilter(v);
                   setPage(0);
                 },
               },
@@ -301,6 +385,17 @@ export function DanaOperasionalPage() {
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="Total Plafon (Rp)" value={form.total_plafon} onChange={(v: string) => set_field("total_plafon", v)} required type="number" />
           </Grid>
+          <Grid size={{ xs: 12 }}>
+            <SearchableSelect
+              label="Kamar (Kategori)"
+              value={String(form.kategori_kamar ?? "LAINNYA")}
+              options={KATEGORI_KAMAR_OPTIONS}
+              onChange={(v) => set_field("kategori_kamar", v)}
+              disabled={Boolean(editing)}
+              placeholder="Pilih kamar..."
+            />
+            {!editing && <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mt: 0.5 }}>{kategori_kamar_percent(form.kategori_kamar)} dari margin</Typography>}
+          </Grid>
         </Grid>
       </Modal>
 
@@ -332,7 +427,9 @@ export function DanaOperasionalPage() {
               <Box sx={{ p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
                 <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>PLAFON AWAL</Typography>
                 <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, mt: 0.5 }}>{format_rupiah(d.total_plafon)}</Typography>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>{String(d.nama_unit_koordinator ?? "-")} · {String(d.tahun_fiscal ?? "-")}</Typography>
+                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.25 }}>
+                  {String(d.nama_unit_koordinator ?? "-")} · {String(d.tahun_fiscal ?? "-")}
+                </Typography>
               </Box>
               <Box sx={{ p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
                 <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>TOTAL PENGELUARAN</Typography>

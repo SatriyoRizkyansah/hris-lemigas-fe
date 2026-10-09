@@ -6,7 +6,7 @@ import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, Search
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
-import { resolve_current_role, current_year, current_month, format_rupiah, status_variant, BULAN_OPTIONS, SUMBER_DANA_OPTIONS, unwrap_list, unwrap_pagination } from "../../common/hris";
+import { resolve_current_role, current_year, current_month, format_rupiah, status_variant, BULAN_OPTIONS, SUMBER_DANA_OPTIONS, unwrap_list, unwrap_pagination, kategori_kamar_label } from "../../common/hris";
 
 function Field({ label, value, onChange, required, disabled, type, multiline }: any) {
   return (
@@ -28,7 +28,7 @@ function Field({ label, value, onChange, required, disabled, type, multiline }: 
 
 export function AlokasiGajiPage() {
   const role = resolve_current_role();
-  const can_edit = role === "superadmin" || role === "koordinator";
+  const can_edit = role === "superadmin" || role === "koordinator" || role === "keuangan";
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -113,7 +113,7 @@ export function AlokasiGajiPage() {
 
   const do_options_all = unwrap_list(do_query.response).map((d: any) => ({
     value: String(d.id),
-    label: `${d.tahun_fiscal} — ${format_rupiah(d.total_plafon)} (${d.nama_unit_koordinator ?? "-"})`,
+    label: `${kategori_kamar_label(d.kategori_kamar)} · ${d.tahun_fiscal} — ${format_rupiah(d.total_plafon)} (${d.nama_unit_koordinator ?? "-"})`,
     unitKoordinatorId: d.unit_koordinator?.id ?? d.id_unit_koordinator ?? d.unit_koordinator_id ?? null,
   }));
   const do_options = rootKoordinatorId ? do_options_all.filter((o) => o.unitKoordinatorId === rootKoordinatorId) : [];
@@ -143,7 +143,7 @@ export function AlokasiGajiPage() {
         id_dana_operasional: active_sk.dana_operasional_id_default ?? f.id_dana_operasional ?? "",
       }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sk_query.response]);
 
   // Reset autofill guard + dependent fields saat pegawai berubah
@@ -157,7 +157,7 @@ export function AlokasiGajiPage() {
       id_ro: "",
       id_dana_operasional: "",
     }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.id_pegawai]);
 
   // Reset RO/DO saat tahun berubah
@@ -404,18 +404,12 @@ export function AlokasiGajiPage() {
           </Grid>
 
           {/* Grouped sumber dana: RO (Direct Cost) dan Dana Operasional (Margin) */}
-          <Grid size={{ xs: 12 }}>            <FormControl fullWidth size="small" required>
-              <InputLabel shrink={Boolean(form.id_ro || form.id_dana_operasional || form.sumber_dana)}>
-                Sumber Dana
-              </InputLabel>
+          <Grid size={{ xs: 12 }}>
+            {" "}
+            <FormControl fullWidth size="small" required>
+              <InputLabel shrink={Boolean(form.id_ro || form.id_dana_operasional || form.sumber_dana)}>Sumber Dana</InputLabel>
               <Select
-                value={
-                  form.sumber_dana === "RO" && form.id_ro
-                    ? `RO::${form.id_ro}`
-                    : form.sumber_dana === "OPERASIONAL" && form.id_dana_operasional
-                    ? `DO::${form.id_dana_operasional}`
-                    : ""
-                }
+                value={form.sumber_dana === "RO" && form.id_ro ? `RO::${form.id_ro}` : form.sumber_dana === "OPERASIONAL" && form.id_dana_operasional ? `DO::${form.id_dana_operasional}` : ""}
                 label="Sumber Dana"
                 displayEmpty
                 onChange={(e) => {
@@ -438,13 +432,15 @@ export function AlokasiGajiPage() {
                 MenuProps={{ PaperProps: { sx: { maxHeight: 320, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" } } }}
               >
                 {/* Group: RO */}
-                <ListSubheader sx={{ bgcolor: "var(--muted)", color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.5, lineHeight: "28px", px: 2 }}>
-                  ▸ RO — DIRECT COST
-                </ListSubheader>
+                <ListSubheader sx={{ bgcolor: "var(--muted)", color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.5, lineHeight: "28px", px: 2 }}>▸ RO — DIRECT COST</ListSubheader>
                 {ro_query.is_loading ? (
-                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Memuat RO...</MenuItem>
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>
+                    Memuat RO...
+                  </MenuItem>
                 ) : ro_options.length === 0 ? (
-                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Tidak ada RO tersedia</MenuItem>
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>
+                    Tidak ada RO tersedia
+                  </MenuItem>
                 ) : (
                   ro_options.map((r) => (
                     <MenuItem key={r.value} value={`RO::${r.value}`} sx={{ fontSize: "0.85rem", pl: 3, "&.Mui-selected": { bgcolor: "color-mix(in srgb, var(--primary) 12%, transparent)" } }}>
@@ -456,13 +452,15 @@ export function AlokasiGajiPage() {
                 <Divider sx={{ my: 0.5 }} />
 
                 {/* Group: Dana Operasional */}
-                <ListSubheader sx={{ bgcolor: "var(--muted)", color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.5, lineHeight: "28px", px: 2 }}>
-                  ▸ DANA OPERASIONAL — MARGIN
-                </ListSubheader>
+                <ListSubheader sx={{ bgcolor: "var(--muted)", color: "var(--muted-foreground)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.5, lineHeight: "28px", px: 2 }}>▸ DANA OPERASIONAL — MARGIN</ListSubheader>
                 {do_query.is_loading ? (
-                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Memuat Dana Operasional...</MenuItem>
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>
+                    Memuat Dana Operasional...
+                  </MenuItem>
                 ) : do_options.length === 0 ? (
-                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>Tidak ada Dana Operasional tersedia</MenuItem>
+                  <MenuItem disabled value="" sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", pl: 3 }}>
+                    Tidak ada Dana Operasional tersedia
+                  </MenuItem>
                 ) : (
                   do_options.map((d) => (
                     <MenuItem key={d.value} value={`DO::${d.value}`} sx={{ fontSize: "0.85rem", pl: 3, "&.Mui-selected": { bgcolor: "color-mix(in srgb, var(--primary) 12%, transparent)" } }}>
@@ -484,11 +482,7 @@ export function AlokasiGajiPage() {
               type="number"
               value={form.jumlah ?? ""}
               onChange={(e) => set_field("jumlah", e.target.value)}
-              helperText={
-                sk_autofill?.gaji_bulanan && !editing
-                  ? `Dari SK ${sk_autofill.nomor_sk ?? ""}: ${format_rupiah(sk_autofill.gaji_bulanan)}`
-                  : undefined
-              }
+              helperText={sk_autofill?.gaji_bulanan && !editing ? `Dari SK ${sk_autofill.nomor_sk ?? ""}: ${format_rupiah(sk_autofill.gaji_bulanan)}` : undefined}
               slotProps={{ formHelperText: { sx: { color: "var(--muted-foreground)", fontSize: "0.72rem", ml: 0 } } }}
             />
           </Grid>

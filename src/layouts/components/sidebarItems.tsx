@@ -71,7 +71,11 @@ const keuanganTransaksiItems: NavItem[] = [
   { title: "Rekap BLU", icon: <RekapIcon fontSize="small" />, path: "/alokasi-gaji/rekap" },
 ];
 
-const keuanganMasterItems: NavItem[] = [{ title: "Dana Operasional", icon: <DanaIcon fontSize="small" />, path: "/dana-operasional" }];
+const keuanganMasterItems: NavItem[] = [
+  { title: "Proyek", icon: <ProyekIcon fontSize="small" />, path: "/proyek" },
+  { title: "RO", icon: <RoIcon fontSize="small" />, path: "/ro" },
+  { title: "Dana Operasional", icon: <DanaIcon fontSize="small" />, path: "/dana-operasional" },
+];
 
 const sistemItems: NavItem[] = [
   { title: "Pengguna", icon: <UsersIcon fontSize="small" />, path: "/pengguna" },

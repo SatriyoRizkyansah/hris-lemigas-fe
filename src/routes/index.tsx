@@ -90,7 +90,7 @@ export function AppRoutes() {
           <Route
             path="/proyek"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+              <RequireRole roles={ALL_MANAGEMENT}>
                 <ProyekPage />
               </RequireRole>
             }
@@ -98,7 +98,7 @@ export function AppRoutes() {
           <Route
             path="/ro"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+              <RequireRole roles={ALL_MANAGEMENT}>
                 <RoPage />
               </RequireRole>
             }
@@ -106,7 +106,7 @@ export function AppRoutes() {
           <Route
             path="/ro/:id"
             element={
-              <RequireRole roles={SUPERADMIN_KOORDINATOR}>
+              <RequireRole roles={ALL_MANAGEMENT}>
                 <RoDetailPage />
               </RequireRole>
             }

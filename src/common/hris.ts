@@ -91,6 +91,40 @@ export const SUMBER_DANA_OPTIONS = [
   { label: "Operasional", value: "OPERASIONAL" },
 ];
 
+export const KATEGORI_KAMAR_OPTIONS = [
+  { label: "P1 PNS/Non-PNS (48%)", value: "P1_PNS_NON_PNS" },
+  { label: "P2 KP3 (30%)", value: "P2_KP3" },
+  { label: "OPS Kantor (17%)", value: "OPS_KANTOR" },
+  { label: "OPS KP3 (2.5%)", value: "OPS_KP3" },
+  { label: "Mulos/SPI (2.5%)", value: "MULOS_SPI" },
+  { label: "Lainnya", value: "LAINNYA" },
+];
+
+export const KATEGORI_KAMAR_LABEL: Record<string, string> = {
+  P1_PNS_NON_PNS: "P1 PNS/Non-PNS",
+  P2_KP3: "P2 KP3",
+  OPS_KANTOR: "OPS Kantor",
+  OPS_KP3: "OPS KP3",
+  MULOS_SPI: "Mulos/SPI",
+  LAINNYA: "Lainnya",
+};
+
+export const kategori_kamar_label = (v?: string | null): string => {
+  if (!v) return "-";
+  return KATEGORI_KAMAR_LABEL[v] ?? v;
+};
+
+export const kategori_kamar_percent = (v?: string | null): string => {
+  const map: Record<string, string> = {
+    P1_PNS_NON_PNS: "48%",
+    P2_KP3: "30%",
+    OPS_KANTOR: "17%",
+    OPS_KP3: "2.5%",
+    MULOS_SPI: "2.5%",
+  };
+  return map[v ?? ""] ?? "";
+};
+
 // ─── Status chip variant mapping ──────────────────────────────────────────────
 
 export const status_variant = (status?: string | null): "success" | "neutral" | "danger" | "warning" | "info" => {
