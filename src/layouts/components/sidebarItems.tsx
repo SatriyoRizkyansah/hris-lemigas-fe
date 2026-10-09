@@ -12,6 +12,7 @@ import {
   AdminPanelSettingsOutlined as UsersIcon,
   AccountBoxOutlined as AccountBoxIcon,
   ReceiptLongOutlined as TagihanIcon,
+  SettingsOutlined as SettingsIcon,
 } from "@mui/icons-material";
 
 export interface NavItem {
@@ -79,6 +80,7 @@ const keuanganMasterItems: NavItem[] = [
 
 const sistemItems: NavItem[] = [
   { title: "Pengguna", icon: <UsersIcon fontSize="small" />, path: "/pengguna" },
+  { title: "Pengaturan Margin", icon: <SettingsIcon fontSize="small" />, path: "/pengaturan-margin" },
   { title: "Profil Saya", icon: <AccountBoxIcon fontSize="small" />, path: "/profil" },
 ];
 

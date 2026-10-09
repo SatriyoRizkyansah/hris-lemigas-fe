@@ -226,6 +226,12 @@ export interface ProyekItemDto {
   nama_proyek: string;
   tahun_fiscal: number;
   sumber_pendanaan?: object | null;
+  /** @example 1000000000 */
+  nilai_kontrak?: number;
+  /** @example 750000000 */
+  total_direct_cost?: number;
+  /** @example 250000000 */
+  total_margin?: number;
   jumlah_ro?: number;
   total_plafon_ro?: number;
   /** @format date-time */
@@ -243,6 +249,21 @@ export interface CreateProyekDto {
   tahun_fiscal: number;
   /** @example "APBN 2026" */
   sumber_pendanaan?: string;
+  /**
+   * Nilai kontrak total
+   * @example 1000000000
+   */
+  nilai_kontrak?: number;
+  /**
+   * Total direct cost
+   * @example 750000000
+   */
+  total_direct_cost?: number;
+  /**
+   * Total margin yang akan didistribusikan ke 5 kamar
+   * @example 250000000
+   */
+  total_margin?: number;
 }
 
 export interface UpdateProyekDto {
@@ -250,6 +271,12 @@ export interface UpdateProyekDto {
   /** @example 2026 */
   tahun_fiscal?: number;
   sumber_pendanaan?: string;
+  /** @example 1000000000 */
+  nilai_kontrak?: number;
+  /** @example 750000000 */
+  total_direct_cost?: number;
+  /** @example 250000000 */
+  total_margin?: number;
 }
 
 export interface RoItemDto {
@@ -628,6 +655,20 @@ export interface UpdateUserDto {
 
 export type DistributeMarginDto = object;
 
+export type DistribusiMarginSimpleDto = object;
+
+export interface UpdatePengaturanMarginDto {
+  /** @example "P1 PNS & Non PNS" */
+  nama_kamar?: string;
+  /**
+   * Persentase 0-100
+   * @example 48
+   */
+  persentase?: number;
+  /** Unit koordinator pemilik wallet */
+  unit_kerja_id?: string;
+}
+
 export type QueryParamsType = Record<string | number, any>;
 export type ResponseFormat = keyof Omit<Body, "body" | "bodyUsed">;
 
@@ -966,7 +1007,7 @@ export class Api<
      *
      * @tags Master - Pegawai
      * @name PegawaiGetControllerGetData
-     * @summary Get daftar pegawai (Superadmin, Koordinator)
+     * @summary Get daftar pegawai (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/pegawai
      * @secure
      */
@@ -1042,7 +1083,7 @@ export class Api<
      *
      * @tags Master - Pegawai
      * @name PegawaiGetControllerGetDetail
-     * @summary Get detail pegawai (Superadmin, Koordinator)
+     * @summary Get detail pegawai (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/pegawai/{id}
      * @secure
      */
@@ -1112,7 +1153,7 @@ export class Api<
      *
      * @tags Master - Unit Kerja
      * @name UnitKerjaGetControllerGetData
-     * @summary Get daftar unit kerja (Superadmin, Koordinator)
+     * @summary Get daftar unit kerja (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/unit-kerja
      * @secure
      */
@@ -1187,7 +1228,7 @@ export class Api<
      *
      * @tags Master - Unit Kerja
      * @name UnitKerjaGetControllerGetTree
-     * @summary Get struktur organisasi (tree) (Superadmin, Koordinator)
+     * @summary Get struktur organisasi (tree) (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/unit-kerja/tree
      * @secure
      */
@@ -1257,7 +1298,7 @@ export class Api<
      *
      * @tags Master - Proyek
      * @name ProyekControllerGetData
-     * @summary Get daftar proyek (Superadmin, Koordinator)
+     * @summary Get daftar proyek (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/proyek
      * @secure
      */
@@ -1331,7 +1372,7 @@ export class Api<
      *
      * @tags Master - Proyek
      * @name ProyekControllerGetDetail
-     * @summary Get detail proyek (Superadmin, Koordinator)
+     * @summary Get detail proyek (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/proyek/{id}
      * @secure
      */
@@ -1394,6 +1435,23 @@ export class Api<
         secure: true,
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Proyek
+     * @name ProyekControllerGetDistribusi
+     * @summary Get distribusi margin proyek (Superadmin, Koordinator, KEUANGAN)
+     * @request GET:/api/proyek/{id}/distribusi
+     * @secure
+     */
+    proyekControllerGetDistribusi: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/proyek/${id}/distribusi`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
   };
   masterRo = {
     /**
@@ -1401,7 +1459,7 @@ export class Api<
      *
      * @tags Master - RO
      * @name RoControllerGetData
-     * @summary Get daftar RO (Superadmin, Koordinator)
+     * @summary Get daftar RO (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/ro
      * @secure
      */
@@ -1476,7 +1534,7 @@ export class Api<
      *
      * @tags Master - RO
      * @name RoControllerGetDetail
-     * @summary Get detail RO (Superadmin, Koordinator)
+     * @summary Get detail RO (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/ro/{id}
      * @secure
      */
@@ -1545,7 +1603,7 @@ export class Api<
      *
      * @tags Master - RO
      * @name RoControllerGetLedger
-     * @summary Get ledger RO (Superadmin, Koordinator)
+     * @summary Get ledger RO (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/ro/{id}/ledger
      * @secure
      */
@@ -1586,7 +1644,7 @@ export class Api<
      *
      * @tags Master - RO Transaksi
      * @name RoTransaksiControllerList
-     * @summary List transaksi RO (Superadmin, Koordinator)
+     * @summary List transaksi RO (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/ro/{id}/transaksi
      * @secure
      */
@@ -1672,7 +1730,7 @@ export class Api<
      *
      * @tags Master - Dana Operasional
      * @name DanaOperasionalControllerGetData
-     * @summary Get daftar dana operasional (Superadmin, Koordinator)
+     * @summary Get daftar dana operasional (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/dana-operasional
      * @secure
      */
@@ -1688,6 +1746,14 @@ export class Api<
         id_unit_koordinator?: string;
         /** @example 2026 */
         tahun_fiscal?: number;
+        /** Filter kategori kamar */
+        kategori_kamar?:
+          | "P1_PNS_NON_PNS"
+          | "P2_KP3"
+          | "OPS_KANTOR"
+          | "OPS_KP3"
+          | "MULOS_SPI"
+          | "LAINNYA";
       },
       params: RequestParams = {},
     ) =>
@@ -1748,7 +1814,7 @@ export class Api<
      *
      * @tags Master - Dana Operasional
      * @name DanaOperasionalControllerGetDetail
-     * @summary Get detail dana operasional (Superadmin, Koordinator)
+     * @summary Get detail dana operasional (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/dana-operasional/{id}
      * @secure
      */
@@ -1820,7 +1886,7 @@ export class Api<
      *
      * @tags Master - Dana Operasional
      * @name DanaOperasionalControllerGetLedger
-     * @summary Get ledger Dana Operasional (Superadmin, Koordinator)
+     * @summary Get ledger Dana Operasional (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/dana-operasional/{id}/ledger
      * @secure
      */
@@ -1847,7 +1913,7 @@ export class Api<
      *
      * @tags Master - Dana Transaksi
      * @name DanaTransaksiControllerList
-     * @summary List transaksi dana (Superadmin, Koordinator)
+     * @summary List transaksi dana (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/dana-operasional/{id}/transaksi
      * @secure
      */
@@ -1864,7 +1930,7 @@ export class Api<
      *
      * @tags Master - Dana Transaksi
      * @name DanaTransaksiControllerCreate
-     * @summary Tambah transaksi dana (Superadmin, Koordinator)
+     * @summary Tambah transaksi dana (Superadmin, Koordinator, KEUANGAN)
      * @request POST:/api/dana-operasional/{id}/transaksi
      * @secure
      */
@@ -1887,7 +1953,7 @@ export class Api<
      *
      * @tags Master - Dana Transaksi
      * @name DanaTransaksiControllerUpdate
-     * @summary Update transaksi dana (Superadmin, Koordinator)
+     * @summary Update transaksi dana (Superadmin, Koordinator, KEUANGAN)
      * @request PUT:/api/dana-operasional/{id}/transaksi/{tid}
      * @secure
      */
@@ -1911,7 +1977,7 @@ export class Api<
      *
      * @tags Master - Dana Transaksi
      * @name DanaTransaksiControllerRemove
-     * @summary Hapus transaksi dana (Superadmin, Koordinator)
+     * @summary Hapus transaksi dana (Superadmin, Koordinator, KEUANGAN)
      * @request DELETE:/api/dana-operasional/{id}/transaksi/{tid}
      * @secure
      */
@@ -1933,7 +1999,7 @@ export class Api<
      *
      * @tags SK
      * @name SkGetControllerGetData
-     * @summary Get daftar SK (Superadmin, Koordinator)
+     * @summary Get daftar SK (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/sk
      * @secure
      */
@@ -2008,7 +2074,7 @@ export class Api<
      *
      * @tags SK
      * @name SkGetControllerGetExpiringSoon
-     * @summary SK hampir habis (30 hari) (Superadmin, Koordinator)
+     * @summary SK hampir habis (30 hari) (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/sk/expiring-soon
      * @secure
      */
@@ -2058,7 +2124,7 @@ export class Api<
      *
      * @tags SK
      * @name SkGetControllerGetRiwayat
-     * @summary Get riwayat SK pegawai (Superadmin, Koordinator)
+     * @summary Get riwayat SK pegawai (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/sk/pegawai/{pegawaiId}
      * @secure
      */
@@ -2185,7 +2251,7 @@ export class Api<
      *
      * @tags Alokasi Gaji TA
      * @name AlokasiGetControllerGetData
-     * @summary Get daftar alokasi gaji TA (Superadmin, Koordinator)
+     * @summary Get daftar alokasi gaji TA (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/alokasi-gaji
      * @secure
      */
@@ -2242,7 +2308,7 @@ export class Api<
      *
      * @tags Alokasi Gaji TA
      * @name AlokasiPostControllerCreate
-     * @summary Buat alokasi gaji TA (Superadmin, Koordinator)
+     * @summary Buat alokasi gaji TA (Superadmin, Koordinator, KEUANGAN)
      * @request POST:/api/alokasi-gaji
      * @secure
      */
@@ -2270,7 +2336,7 @@ export class Api<
      *
      * @tags Alokasi Gaji TA
      * @name AlokasiPutControllerUpdate
-     * @summary Update alokasi gaji TA (Superadmin, Koordinator)
+     * @summary Update alokasi gaji TA (Superadmin, Koordinator, KEUANGAN)
      * @request PUT:/api/alokasi-gaji/{id}
      * @secure
      */
@@ -2299,7 +2365,7 @@ export class Api<
      *
      * @tags Alokasi Gaji TA
      * @name AlokasiDeleteControllerCancel
-     * @summary Batalkan alokasi gaji TA (Superadmin, Koordinator)
+     * @summary Batalkan alokasi gaji TA (Superadmin, Koordinator, KEUANGAN)
      * @request DELETE:/api/alokasi-gaji/{id}
      * @secure
      */
@@ -2322,7 +2388,7 @@ export class Api<
      *
      * @tags Alokasi Gaji TA
      * @name AlokasiRekapControllerGetRekap
-     * @summary Rekap alokasi gaji TA bulanan (Superadmin, Koordinator)
+     * @summary Rekap alokasi gaji TA bulanan (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/alokasi-gaji/rekap
      * @secure
      */
@@ -2360,7 +2426,7 @@ export class Api<
      *
      * @tags Alokasi Gaji TA
      * @name AlokasiRekapControllerExportRekap
-     * @summary Export rekap alokasi gaji TA ke Excel (Superadmin, Koordinator)
+     * @summary Export rekap alokasi gaji TA ke Excel (Superadmin, Koordinator, KEUANGAN)
      * @request GET:/api/alokasi-gaji/rekap/export
      * @secure
      */
@@ -2393,7 +2459,7 @@ export class Api<
      *
      * @tags Dashboard
      * @name DashboardControllerGetSuperadminDashboard
-     * @summary Dashboard superadmin (Superadmin)
+     * @summary Dashboard superadmin (Superadmin, KEUANGAN)
      * @request GET:/api/dashboard/superadmin
      * @secure
      */
@@ -2443,7 +2509,7 @@ export class Api<
      *
      * @tags Dashboard
      * @name DashboardControllerGetSkExpiringSoon
-     * @summary SK yang masa berlakunya hampir habis (30 hari) (Superadmin)
+     * @summary SK yang masa berlakunya hampir habis (30 hari) (Superadmin, KEUANGAN)
      * @request GET:/api/dashboard/sk-expiring-soon
      * @secure
      */
@@ -2565,7 +2631,7 @@ export class Api<
      *
      * @tags My Profile
      * @name MyProfileControllerGetProfile
-     * @summary Profil saya (karyawan, koordinator, superadmin) (Superadmin, Koordinator, Karyawan)
+     * @summary Profil saya (karyawan, koordinator, superadmin) (Superadmin, Koordinator, Karyawan, KEUANGAN)
      * @request GET:/api/my/profile
      * @secure
      */
@@ -2659,6 +2725,28 @@ export class Api<
         type: ContentType.Json,
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Finance
+     * @name FinanceControllerDistribusiMargin
+     * @summary Distribusi margin testing (Superadmin)
+     * @request POST:/api/finance/distribusi-margin
+     * @secure
+     */
+    financeControllerDistribusiMargin: (
+      data: DistribusiMarginSimpleDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/finance/distribusi-margin`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
   };
   sumberDana = {
     /**
@@ -2684,6 +2772,47 @@ export class Api<
         method: "GET",
         query: query,
         secure: true,
+        ...params,
+      }),
+  };
+  masterPengaturanMargin = {
+    /**
+     * No description
+     *
+     * @tags Master - Pengaturan Margin
+     * @name PengaturanMarginControllerGetData
+     * @summary Get daftar pengaturan margin (Superadmin, Koordinator, KEUANGAN)
+     * @request GET:/api/pengaturan-margin
+     * @secure
+     */
+    pengaturanMarginControllerGetData: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/pengaturan-margin`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Pengaturan Margin
+     * @name PengaturanMarginControllerUpdate
+     * @summary Update pengaturan margin (Superadmin)
+     * @request PUT:/api/pengaturan-margin/{id}
+     * @secure
+     */
+    pengaturanMarginControllerUpdate: (
+      id: string,
+      data: UpdatePengaturanMarginDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/pengaturan-margin/${id}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
   };

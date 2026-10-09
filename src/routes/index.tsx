@@ -18,6 +18,7 @@ const AlokasiGajiPage = lazy(() => import("../pages/alokasi-gaji/AlokasiGajiPage
 const RekapAlokasiPage = lazy(() => import("../pages/alokasi-gaji/RekapAlokasiPage"));
 const UsersPage = lazy(() => import("../pages/users/UsersPage"));
 const ProfilPage = lazy(() => import("../pages/profil/ProfilPage"));
+const PengaturanMarginPage = lazy(() => import("../pages/pengaturan-margin/PengaturanMarginPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
 /** Redirect ke /login jika belum authenticated */
@@ -160,6 +161,14 @@ export function AppRoutes() {
             element={
               <RequireRole roles={EVERYONE}>
                 <ProfilPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/pengaturan-margin"
+            element={
+              <RequireRole roles={SUPERADMIN_ONLY}>
+                <PengaturanMarginPage />
               </RequireRole>
             }
           />

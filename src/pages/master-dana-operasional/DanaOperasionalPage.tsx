@@ -37,6 +37,7 @@ export function DanaOperasionalPage() {
   const [rows_per_page, set_rows_per_page] = useState(10);
   const [id_unit, setIdUnit] = useState("");
   const [kategori_filter, setKategoriFilter] = useState("");
+  const [tahun_fiscal, setTahunFiscal] = useState(String(current_year()));
 
   const [modal_open, set_modal_open] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -52,7 +53,9 @@ export function DanaOperasionalPage() {
   const list_query = use_query({
     api_tag: "masterDanaOperasional",
     api_method: "danaOperasionalControllerGetData",
-    api_query: [{ query: search || undefined, page: page + 1, limit: rows_per_page, id_unit_koordinator: id_unit || undefined, kategori_kamar: kategori_filter || undefined } as any],
+    api_query: [
+      { query: search || undefined, page: page + 1, limit: rows_per_page, id_unit_koordinator: id_unit || undefined, kategori_kamar: kategori_filter || undefined, tahun_fiscal: tahun_fiscal ? Number(tahun_fiscal) : undefined } as any,
+    ],
   });
   const detail_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetDetail", api_query: [detail_id as any] as any, should_running_if: Boolean(detail_id) } as any);
   const ledger_do_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetLedger", api_query: [detail_id as string], should_running_if: Boolean(detail_id) } as any);
@@ -83,6 +86,7 @@ export function DanaOperasionalPage() {
     setForm({ id_unit_koordinator: "", tahun_fiscal: String(current_year()), total_plafon: "", kategori_kamar: "LAINNYA" });
     set_modal_open(true);
   };
+  void open_create;
   const open_edit = (row: any) => {
     setEditing(row);
     setForm({ id_unit_koordinator: row.id_unit_koordinator ?? row.unit_koordinator_id ?? "", tahun_fiscal: String(row.tahun_fiscal ?? current_year()), total_plafon: row.total_plafon ?? "", kategori_kamar: row.kategori_kamar ?? "LAINNYA" });
@@ -201,9 +205,21 @@ export function DanaOperasionalPage() {
 
   const ledger_columns: Column<any>[] = [
     { id: "no", label: "No", width: 50, render: (_: any, _r: any, idx?: number) => String((idx ?? 0) + 1) },
-    { id: "nama_kegiatan", label: "Nama Kegiatan", width: 200, render: (_: any, r: any) => <Box sx={{ wordBreak: "break-word", fontSize: "0.82rem" }}>{String(r.nama_kegiatan ?? "-")}</Box> },
-    { id: "no_kuitansi", label: "No Kuitansi", width: 130, render: (_: any, r: any) => <Box sx={{ wordBreak: "break-all", fontSize: "0.8rem" }}>{String(r.no_kuitansi ?? "-")}</Box> },
     { id: "tanggal", label: "Tanggal", width: 110, render: (_: any, r: any) => format_date(r.tanggal) },
+    { id: "nama_kegiatan", label: "Uraian Transaksi", width: 200, render: (_: any, r: any) => <Box sx={{ wordBreak: "break-word", fontSize: "0.82rem" }}>{String(r.nama_kegiatan ?? "-")}</Box> },
+    {
+      id: "referensi_proyek",
+      label: "Referensi Proyek",
+      width: 180,
+      render: (_: any, r: any) =>
+        r.proyek ? (
+          <Box sx={{ fontSize: "0.78rem", fontWeight: 600 }}>
+            {String(r.proyek.kode_proyek)} — {String(r.proyek.nama_proyek)}
+          </Box>
+        ) : (
+          <Typography sx={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>-</Typography>
+        ),
+    },
     { id: "debit", label: "Debit", align: "right", width: 120, render: (_: any, r: any) => (Number(r.debit) ? format_rupiah(r.debit) : "-") },
     { id: "kredit", label: "Kredit", align: "right", width: 120, render: (_: any, r: any) => (Number(r.kredit) ? format_rupiah(r.kredit) : "-") },
     {
@@ -253,14 +269,8 @@ export function DanaOperasionalPage() {
       sectionTitle="Master Data"
       title="Dana Operasional"
       headerTitle="Master Dana Operasional"
-      headerDescription="Plafon dana operasional per unit koordinator dan tahun fiscal. Klik baris untuk lihat detail dana."
-      headerAction={
-        can_edit ? (
-          <SoftButton startIcon={<AddOutlined />} onClick={open_create}>
-            Tambah Dana Operasional
-          </SoftButton>
-        ) : undefined
-      }
+      headerDescription="Plafon dana operasional per unit koordinator dan tahun fiscal. Wallet dibuat otomatis dari distribusi margin proyek — tidak ada pembuatan manual. Klik baris untuk lihat ledger."
+      headerAction={undefined}
     >
       <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* 5 Kamar wallet summary cards — visible for keuangan monitoring */}
@@ -318,6 +328,22 @@ export function DanaOperasionalPage() {
             }}
             searchPlaceholder="Cari unit koordinator..."
             filters={[
+              {
+                id: "tahun_fiscal",
+                label: "Tahun Fiscal",
+                value: tahun_fiscal,
+                options: [
+                  { label: "Semua Tahun", value: "" },
+                  ...[0, 1, 2, 3].map((i) => {
+                    const y = current_year() - i;
+                    return { label: String(y), value: String(y) };
+                  }),
+                ],
+                onChange: (v: string) => {
+                  setTahunFiscal(v);
+                  setPage(0);
+                },
+              },
               {
                 id: "id_unit_koordinator",
                 label: "Unit Koordinator",
