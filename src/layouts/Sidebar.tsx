@@ -288,7 +288,7 @@ export function Sidebar() {
                       transition: "opacity 0.2s ease, transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
-                    Human Resource Information System
+                    {/* Human Resource Information System */}
                   </Typography>
                 </Box>
               </Box>
