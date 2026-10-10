@@ -459,6 +459,7 @@ export function RoDetailPage() {
                 ))}
               </Box>
               <DataTable
+                compact
                 columns={ledger_columns}
                 data={filtered_ledger}
                 title=""
@@ -497,6 +498,7 @@ export function RoDetailPage() {
                 ))}
               </Box>
               <DataTable
+                compact
                 columns={[
                   {
                     id: "pegawai",

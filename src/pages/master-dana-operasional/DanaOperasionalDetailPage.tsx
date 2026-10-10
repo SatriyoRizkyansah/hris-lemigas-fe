@@ -206,9 +206,9 @@ export function DanaOperasionalDetailPage() {
           </Box>
           <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: saldo_ledger < 0 ? "#fef2f2" : "var(--card)", borderColor: saldo_ledger < 0 ? "#fecaca" : "var(--border)" }}>
             <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>SISA SALDO AKHIR</Typography>
-            <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: saldo_ledger < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(saldo_ledger)}</Typography>
-            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Running balance dari ledger</Typography>
-            {saldo_ledger < 0 && <Typography sx={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600, mt: 0.5 }}>Over budget</Typography>}
+            <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: (d.total_terpakai ?? 0) < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(d.total_terpakai ?? 0)}</Typography>
+            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Saldo tersedia setelah transaksi</Typography>
+            {(d.total_terpakai ?? 0) < 0 && <Typography sx={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600, mt: 0.5 }}>Over budget</Typography>}
           </Box>
         </Box>
 
@@ -234,11 +234,11 @@ export function DanaOperasionalDetailPage() {
             <Typography sx={{ fontSize: "0.88rem", fontWeight: 600 }}>{format_rupiah(d.total_plafon)}</Typography>
           </Box>
           <Box>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)" }}>TOTAL TERPAKAI</Typography>
+            <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)" }}>SISA SALDO</Typography>
             <Typography sx={{ fontSize: "0.88rem", fontWeight: 600 }}>{format_rupiah(d.total_terpakai ?? 0)}</Typography>
           </Box>
           <Box>
-            <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)" }}>SISA SALDO</Typography>
+            <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)" }}>TOTAL TERPAKAI</Typography>
             <Typography sx={{ fontSize: "0.88rem", fontWeight: 600, color: (d.sisa_saldo ?? 0) < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(d.sisa_saldo ?? 0)}</Typography>
           </Box>
         </Box>
@@ -294,6 +294,7 @@ export function DanaOperasionalDetailPage() {
               </Box>
               <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, overflow: "hidden" }}>
                 <DataTable
+                  compact
                   columns={ledger_columns}
                   data={filtered_ledger}
                   title=""
@@ -333,6 +334,7 @@ export function DanaOperasionalDetailPage() {
                 ))}
               </Box>
               <DataTable
+                compact
                 columns={[
                   {
                     id: "pegawai",

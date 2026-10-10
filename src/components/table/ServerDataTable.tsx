@@ -243,12 +243,13 @@ export const ServerDataTable = <T extends Record<string, any>>({
               ) : (
                 /* ─── DESKTOP: normal table ─── */
                 <Fade in={!isLoading} timeout={300}>
-                  <Table size={compact ? "small" : "medium"} sx={{ minWidth: 1200, tableLayout: "fixed" }}>
+                  <Table size={compact ? "small" : "medium"} sx={{ width: "100%", tableLayout: "fixed" }}>
                     <TableHead sx={{ position: "sticky", top: 0, zIndex: 1, backgroundColor: "var(--muted)" }}>
                       <TableRow
                         sx={{
                           "& th": {
-                            py: 1,
+                            py: compact ? 0.75 : 1,
+                            px: compact ? 1 : 1.5,
                             borderBottom: "1px solid var(--border)",
                           },
                         }}
@@ -260,10 +261,10 @@ export const ServerDataTable = <T extends Record<string, any>>({
                             sx={{
                               fontWeight: 700,
                               color: "var(--foreground)",
-                              fontSize: "0.75rem",
+                              fontSize: compact ? "0.7rem" : "0.75rem",
                               width: column.width,
                               maxWidth: column.width,
-                              minWidth: column.width ?? 80,
+                              minWidth: column.width ?? 0,
                               textTransform: "uppercase",
                               letterSpacing: "0.05em",
                               backgroundColor: "var(--muted)",
@@ -301,8 +302,9 @@ export const ServerDataTable = <T extends Record<string, any>>({
                                 "& td": {
                                   borderBottom: "1px solid var(--border)",
                                   color: "var(--foreground)",
-                                  fontSize: "0.875rem",
-                                  py: compact ? 1.3 : 2,
+                                  fontSize: compact ? "0.78rem" : "0.875rem",
+                                  py: compact ? 0.75 : 2,
+                                  px: compact ? 1 : 1.5,
                                   fontWeight: 500,
                                 },
                                 "&:last-of-type td": { borderBottom: 0 },

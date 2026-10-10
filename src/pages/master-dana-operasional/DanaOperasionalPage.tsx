@@ -74,36 +74,51 @@ export function DanaOperasionalPage() {
   const open_detail = (row: any) => navigate(`/dana-operasional/${row.id}`);
 
   const kamar_summary = (() => {
-    const map: Record<string, { total_plafon: number; total_terpakai: number; count: number }> = {};
+    const map: Record<string, { total_plafon: number; total_terpakai: number; total_sisa: number; count: number }> = {};
     rows.forEach((r: any) => {
       const k = r.kategori_kamar ?? "LAINNYA";
-      if (!map[k]) map[k] = { total_plafon: 0, total_terpakai: 0, count: 0 };
+      if (!map[k]) map[k] = { total_plafon: 0, total_terpakai: 0, total_sisa: 0, count: 0 };
       map[k].total_plafon += Number(r.total_plafon ?? 0);
       map[k].total_terpakai += Number(r.total_terpakai ?? 0);
+      map[k].total_sisa += Number(r.sisa_saldo ?? r.total_plafon ?? 0);
       map[k].count += 1;
     });
     return map;
   })();
 
   const columns: Column<any>[] = [
-    { id: "nama_unit_koordinator", label: "Unit Koordinator", sortable: true, render: (_: any, row: any) => <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{String(row.nama_unit_koordinator ?? "-")}</Typography> },
+    { id: "nama_unit_koordinator", label: "Unit Koordinator", width: 180, sortable: true, render: (_: any, row: any) => <Typography sx={{ fontSize: "0.78rem", fontWeight: 600 }}>{String(row.nama_unit_koordinator ?? "-")}</Typography> },
     {
       id: "kategori_kamar",
       label: "Kamar",
+      width: 120,
       render: (_: any, row: any) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <Chip label={kategori_kamar_label(row.kategori_kamar)} size="small" color={row.kategori_kamar === "LAINNYA" ? "default" : "primary"} sx={{ height: 22, fontSize: "0.7rem" }} />
+          <Chip
+            label={kategori_kamar_label(row.kategori_kamar)}
+            size="small"
+            sx={{
+              height: 22,
+              fontSize: "0.7rem",
+              color: row.kategori_kamar === "LAINNYA" ? "var(--muted-foreground)" : "#1d4ed8",
+              bgcolor: row.kategori_kamar === "LAINNYA" ? "var(--muted)" : "#dbeafe",
+              border: "1px solid",
+              borderColor: row.kategori_kamar === "LAINNYA" ? "var(--border)" : "#bfdbfe",
+              "& .MuiChip-label": { px: 1 },
+            }}
+          />
           <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>{kategori_kamar_percent(row.kategori_kamar)}</Typography>
         </Box>
       ),
     },
-    { id: "tahun_fiscal", label: "Tahun Fiscal", align: "center", render: (_: any, row: any) => String(row.tahun_fiscal ?? "-") },
-    { id: "total_plafon", label: "Plafon", align: "right", render: (_: any, row: any) => format_rupiah(row.total_plafon) },
-    { id: "total_terpakai", label: "Terpakai", align: "right", hideMobile: true, render: (_: any, row: any) => format_rupiah(row.total_terpakai) },
+    { id: "tahun_fiscal", label: "Tahun Fiscal", align: "center", width: 95, render: (_: any, row: any) => String(row.tahun_fiscal ?? "-") },
+    { id: "total_plafon", label: "Plafon", align: "right", width: 125, render: (_: any, row: any) => format_rupiah(row.total_plafon) },
+    { id: "total_terpakai", label: "Sisa Saldo", align: "right", width: 125, hideMobile: true, render: (_: any, row: any) => format_rupiah(row.total_terpakai) },
     {
       id: "sisa_saldo",
-      label: "Sisa Saldo",
+      label: "Terpakai",
       align: "right",
+      width: 125,
       render: (_: any, row: any) => <Typography sx={{ fontSize: "0.825rem", fontWeight: 600, color: (row.sisa_saldo ?? 0) >= 0 ? "var(--foreground)" : "#ef4444" }}>{format_rupiah(row.sisa_saldo)}</Typography>,
     },
     {
@@ -134,7 +149,7 @@ export function DanaOperasionalPage() {
             {KATEGORI_KAMAR_OPTIONS.filter((o) => o.value !== "LAINNYA").map((opt) => {
               const s = kamar_summary[opt.value];
               const has = Boolean(s);
-              const sisa = has ? s.total_plafon - s.total_terpakai : 0;
+              const sisa = has ? s.total_terpakai : 0;
               const low = has && sisa < s.total_plafon * 0.15 && sisa >= 0;
               const over = has && sisa < 0;
               return (

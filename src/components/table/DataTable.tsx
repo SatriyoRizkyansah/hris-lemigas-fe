@@ -272,9 +272,14 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
           ) : (
             /* ─── DESKTOP: normal table ─── */
             <TableContainer sx={{ overflowX: "auto" }}>
-              <Table size={compact ? "small" : "medium"} sx={{ minWidth: 900, tableLayout: "fixed" }}>
+              <Table size={compact ? "small" : "medium"} sx={{ width: "100%", tableLayout: "fixed" }}>
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: "color-mix(in srgb, var(--muted) 75%, transparent)", "& th": { borderColor: "var(--border)" } }}>
+                  <TableRow
+                    sx={{
+                      backgroundColor: "color-mix(in srgb, var(--muted) 75%, transparent)",
+                      "& th": { borderColor: "var(--border)", px: compact ? 1 : 1.5, py: compact ? 0.75 : 1.25 },
+                    }}
+                  >
                     {columns.map((column) => (
                       <TableCell
                         key={String(column.id)}
@@ -284,7 +289,7 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                           color: "var(--foreground)",
                           width: column.width,
                           maxWidth: column.width,
-                          minWidth: column.width ?? 80,
+                          minWidth: column.width ?? 0,
                           backgroundColor: "var(--muted)",
                           borderColor: "var(--border)",
                           whiteSpace: "nowrap",
@@ -317,8 +322,9 @@ export const DataTable = React.forwardRef<HTMLDivElement, DataTableProps<AnyData
                             "& td": {
                               borderBottom: "1px solid var(--border)",
                               color: "var(--foreground)",
-                              fontSize: compact ? "0.9rem" : "1rem",
-                              py: compact ? 1.75 : 2.25,
+                              fontSize: compact ? "0.8rem" : "1rem",
+                              py: compact ? 0.75 : 2.25,
+                              px: compact ? 1 : 1.5,
                             },
                             "&:last-of-type td": { borderBottom: 0 },
                           }}
