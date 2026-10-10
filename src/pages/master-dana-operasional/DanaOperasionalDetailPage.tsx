@@ -60,9 +60,11 @@ export function DanaOperasionalDetailPage() {
 
   const ledger_resp: any = (ledger_query.response as any)?.data ?? (ledger_query.response as any) ?? null;
   const ledger: any[] = ledger_resp?.list ?? ledger_resp ?? [];
-  const total_debit = ledger_resp?.total_debit ?? 0;
-  const total_kredit = ledger_resp?.total_kredit ?? 0;
-  const saldo_ledger = ledger_resp?.saldo_ledger ?? 0;
+  const total_debit = Number(ledger_resp?.total_debit ?? 0);
+  const total_kredit = Number(ledger_resp?.total_kredit ?? 0);
+  const saldo_ledger = Number(ledger_resp?.saldo_ledger ?? 0);
+  const saldo_akhir = Number(d?.sisa_saldo ?? saldo_ledger);
+  const total_terpakai = Number(d?.total_terpakai ?? 0);
   const alokasi_list: any[] = d?.alokasi_list ?? [];
   const filtered_ledger = ledger.filter((row) => ledger_filter === "all" || (ledger_filter === "debit" ? Number(row.debit) > 0 : Number(row.kredit) > 0));
   const filtered_alokasi = alokasi_list.filter((row) => alokasi_filter === "all" || String(row.status ?? "").toUpperCase() === alokasi_filter);
@@ -223,14 +225,14 @@ export function DanaOperasionalDetailPage() {
           </Box>
           <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
             <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>TOTAL PENGELUARAN</Typography>
-            <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: total_debit > 0 ? "#dc2626" : undefined }}>{format_rupiah(total_debit)}</Typography>
-            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Kredit masuk: {format_rupiah(total_kredit)}</Typography>
+            <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: total_kredit > 0 ? "#dc2626" : undefined }}>{format_rupiah(total_kredit)}</Typography>
+            <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Dana masuk: {format_rupiah(total_debit)}</Typography>
           </Box>
-          <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: saldo_ledger < 0 ? "#fef2f2" : "var(--card)", borderColor: saldo_ledger < 0 ? "#fecaca" : "var(--border)" }}>
+          <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: (d.sisa_saldo ?? 0) < 0 ? "#fef2f2" : "var(--card)", borderColor: (d.sisa_saldo ?? 0) < 0 ? "#fecaca" : "var(--border)" }}>
             <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted-foreground)", letterSpacing: 0.5 }}>SISA SALDO AKHIR</Typography>
-            <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: (d.total_terpakai ?? 0) < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(d.total_terpakai ?? 0)}</Typography>
+            <Typography sx={{ fontSize: "1.25rem", fontWeight: 800, mt: 0.5, color: saldo_akhir < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(saldo_akhir)}</Typography>
             <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", mt: 0.5 }}>Saldo tersedia setelah transaksi</Typography>
-            {(d.total_terpakai ?? 0) < 0 && <Typography sx={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600, mt: 0.5 }}>Over budget</Typography>}
+            {saldo_akhir < 0 && <Typography sx={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600, mt: 0.5 }}>Over budget</Typography>}
           </Box>
         </Box>
 
@@ -257,11 +259,11 @@ export function DanaOperasionalDetailPage() {
           </Box>
           <Box>
             <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)" }}>SISA SALDO</Typography>
-            <Typography sx={{ fontSize: "0.88rem", fontWeight: 600 }}>{format_rupiah(d.total_terpakai ?? 0)}</Typography>
+            <Typography sx={{ fontSize: "0.88rem", fontWeight: 600 }}>{format_rupiah(saldo_akhir)}</Typography>
           </Box>
           <Box>
             <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted-foreground)" }}>TOTAL TERPAKAI</Typography>
-            <Typography sx={{ fontSize: "0.88rem", fontWeight: 600, color: (d.sisa_saldo ?? 0) < 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(d.sisa_saldo ?? 0)}</Typography>
+            <Typography sx={{ fontSize: "0.88rem", fontWeight: 600, color: total_terpakai > 0 ? "#dc2626" : "#16a34a" }}>{format_rupiah(total_terpakai)}</Typography>
           </Box>
         </Box>
 

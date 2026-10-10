@@ -136,13 +136,13 @@ export function DanaOperasionalPage() {
     },
     { id: "tahun_fiscal", label: "Tahun Fiscal", align: "center", width: 95, render: (_: any, row: any) => String(row.tahun_fiscal ?? "-") },
     { id: "total_plafon", label: "Plafon", align: "right", width: 125, render: (_: any, row: any) => format_rupiah(row.total_plafon) },
-    { id: "total_terpakai", label: "Sisa Saldo", align: "right", width: 125, hideMobile: true, render: (_: any, row: any) => format_rupiah(row.total_terpakai) },
+    { id: "sisa_saldo", label: "Sisa Saldo", align: "right", width: 125, hideMobile: true, render: (_: any, row: any) => format_rupiah(row.sisa_saldo) },
     {
-      id: "sisa_saldo",
+      id: "total_terpakai",
       label: "Terpakai",
       align: "right",
       width: 125,
-      render: (_: any, row: any) => <Typography sx={{ fontSize: "0.825rem", fontWeight: 600, color: (row.sisa_saldo ?? 0) >= 0 ? "var(--foreground)" : "#ef4444" }}>{format_rupiah(row.sisa_saldo)}</Typography>,
+      render: (_: any, row: any) => <Typography sx={{ fontSize: "0.825rem", fontWeight: 600, color: (row.total_terpakai ?? 0) > 0 ? "#dc2626" : "var(--foreground)" }}>{format_rupiah(row.total_terpakai)}</Typography>,
     },
     {
       id: "aksi",
@@ -172,7 +172,8 @@ export function DanaOperasionalPage() {
             {KATEGORI_KAMAR_OPTIONS.filter((o) => o.value !== "LAINNYA").map((opt) => {
               const s = kamar_summary[opt.value];
               const has = Boolean(s);
-              const sisa = has ? s.total_terpakai : 0;
+              const sisa = has ? s.total_sisa : 0;
+              const terpakai = has ? s.total_terpakai : 0;
               const low = has && sisa < s.total_plafon * 0.15 && sisa >= 0;
               const over = has && sisa < 0;
               return (
@@ -199,7 +200,7 @@ export function DanaOperasionalPage() {
                     <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: 0.4, color: "var(--muted-foreground)" }}>{opt.label}</Typography>
                   </Box>
                   <Typography sx={{ fontSize: "0.95rem", fontWeight: 800, color: over ? "#dc2626" : "var(--foreground)" }}>{has ? format_rupiah(s.total_plafon) : "—"}</Typography>
-                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mt: 0.25 }}>{has ? `Terpakai ${format_rupiah(s.total_terpakai)} · Sisa ${format_rupiah(sisa)} · ${s.count} wallet` : "Belum ada wallet"}</Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)", mt: 0.25 }}>{has ? `Terpakai ${format_rupiah(terpakai)} · Sisa ${format_rupiah(sisa)} · ${s.count} wallet` : "Belum ada wallet"}</Typography>
                   {over && <Chip label="Over budget" size="small" color="error" sx={{ mt: 0.75, height: 18, fontSize: "0.65rem" }} />}
                   {low && !over && <Chip label="Saldo menipis" size="small" color="warning" sx={{ mt: 0.75, height: 18, fontSize: "0.65rem" }} />}
                 </Box>

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Grid, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Box, Chip, Divider, Grid, TextField, Typography } from "@mui/material";
 import { AddTaskOutlined, CheckCircleOutline, ErrorOutline } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
 import { InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip, type Column } from "../../components";
@@ -24,9 +24,11 @@ export function RekonsiliasiBankPage() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saldoLoading, setSaldoLoading] = useState(false);
   const [tahun, setTahun] = useState(String(current_year()));
   const [filterRekening, setFilterRekening] = useState("");
   const [form, setForm] = useState<any>({ rekening_id: "", tanggal_rekonsiliasi: today(), saldo_bank: "", keterangan: "" });
+  const saldoRequestRef = useRef(0);
 
   const rekeningOptions = useMemo(() => rekening.filter((r) => r.status_aktif === "AKTIF").map((r) => ({ value: r.id, label: `${r.nama_rekening} — ${r.nomor_rekening}` })), [rekening]);
   const load = async () => {
@@ -49,25 +51,34 @@ export function RekonsiliasiBankPage() {
   }, [tahun, filterRekening]);
 
   const previewSaldoSistem = async (rekeningId: string) => {
+    const requestId = ++saldoRequestRef.current;
     if (!rekeningId) {
       setSaldo({ total_saldo_sistem: 0 });
+      setSaldoLoading(false);
       return;
     }
+    setSaldoLoading(true);
+    setSaldo({ total_saldo_sistem: 0, rekening_id: rekeningId, tahun_fiscal: Number(tahun) });
     try {
-      setSaldo(await api(`/api/rekonsiliasi/saldo-sistem?tahun_fiscal=${tahun}&rekening_id=${rekeningId}`));
+      const result = await api(`/api/rekonsiliasi/saldo-sistem?tahun_fiscal=${tahun}&rekening_id=${rekeningId}`);
+      if (requestId === saldoRequestRef.current) setSaldo(result ?? { total_saldo_sistem: 0, rekening_id: rekeningId });
     } catch (e: any) {
+      setSaldo({ total_saldo_sistem: 0, rekening_id: rekeningId });
       setError(e?.message ?? "Gagal menghitung saldo sistem");
+    } finally {
+      if (requestId === saldoRequestRef.current) setSaldoLoading(false);
     }
   };
   const openModal = () => {
-    const next = { rekening_id: filterRekening || "", tanggal_rekonsiliasi: today(), saldo_bank: "", keterangan: "" };
+    const next = { rekening_id: filterRekening, tanggal_rekonsiliasi: today(), saldo_bank: "", keterangan: "" };
     setForm(next);
     setModalOpen(true);
     void previewSaldoSistem(next.rekening_id);
   };
   const bankBalance = Number(form.saldo_bank || 0);
-  const difference = bankBalance - Number(saldo.total_saldo_sistem || 0);
-  const unmatched = Boolean(form.rekening_id) && difference !== 0;
+  const systemBalance = Number(saldo.total_saldo_sistem || 0);
+  const difference = bankBalance - systemBalance;
+  const unmatched = Boolean(form.rekening_id) && !saldoLoading && difference !== 0;
   const save = async () => {
     setSaving(true);
     setError("");
@@ -137,6 +148,69 @@ export function RekonsiliasiBankPage() {
             Rekonsiliasi Baru
           </SoftButton>
         </Box>
+        {(filterRekening || saldo.jumlah_ro || saldo.jumlah_dana_operasional) && (
+          <Box sx={{ border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)", overflow: "hidden" }}>
+            <Box sx={{ p: 2, display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: "1rem" }}>Rincian Pembentuk Saldo Kas</Typography>
+                <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.76rem" }}>
+                  Audit trail saldo rekening {filterRekening ? "terpilih" : "semua rekening"} pada fiscal {tahun}.
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", gap: 0.75 }}>
+                <Chip size="small" label={`${saldo.jumlah_ro ?? 0} RO`} />
+                <Chip size="small" label={`${saldo.jumlah_dana_operasional ?? 0} Dana Operasional`} />
+              </Box>
+            </Box>
+            <Divider />
+            <Grid container>
+              <Grid size={{ xs: 12, md: 6 }} sx={{ p: 2 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: "0.8rem", mb: 1 }}>RO — Saldo Direct Cost</Typography>
+                {(saldo.ro_breakdown ?? []).map((item: any) => (
+                  <Box key={item.id} sx={{ py: 1, borderBottom: "1px solid var(--border)" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                      <Typography sx={{ fontSize: "0.78rem", fontWeight: 700 }}>
+                        {item.kode_ro} · {item.nama_ro}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.8rem", fontWeight: 800 }}>{format_rupiah(item.saldo)}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>
+                      {item.proyek?.kode_proyek ?? "-"} · {item.proyek?.nama_proyek ?? "Tanpa proyek"}
+                    </Typography>
+                  </Box>
+                ))}
+                {(saldo.ro_breakdown ?? []).length === 0 && <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Tidak ada RO terhubung.</Typography>}
+                <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1.5, fontWeight: 800 }}>
+                  <Typography>Total RO</Typography>
+                  <Typography>{format_rupiah(saldo.saldo_ro)}</Typography>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }} sx={{ p: 2, borderLeft: { md: "1px solid var(--border)" } }}>
+                <Typography sx={{ fontWeight: 800, fontSize: "0.8rem", mb: 1 }}>Dana Operasional — Saldo Bersih</Typography>
+                {(saldo.dana_breakdown ?? []).map((item: any) => (
+                  <Box key={item.id} sx={{ py: 1, borderBottom: "1px solid var(--border)" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                      <Typography sx={{ fontSize: "0.78rem", fontWeight: 700 }}>{item.nama_unit ?? "Unit tidak tersedia"}</Typography>
+                      <Typography sx={{ fontSize: "0.8rem", fontWeight: 800 }}>{format_rupiah(item.saldo)}</Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>
+                      Plafon {format_rupiah(item.plafon)} · Mutasi neto {format_rupiah(item.mutasi_neto)}
+                    </Typography>
+                  </Box>
+                ))}
+                {(saldo.dana_breakdown ?? []).length === 0 && <Typography sx={{ color: "var(--muted-foreground)", fontSize: "0.78rem" }}>Tidak ada Dana Operasional terhubung.</Typography>}
+                <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1.5, fontWeight: 800 }}>
+                  <Typography>Total Dana Operasional</Typography>
+                  <Typography>{format_rupiah(saldo.saldo_dana_operasional)}</Typography>
+                </Box>
+              </Grid>
+            </Grid>
+            <Box sx={{ p: 2, bgcolor: "rgba(15, 23, 42, 0.03)", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
+              <Typography sx={{ fontWeight: 800 }}>Total Kas Virtual Sistem</Typography>
+              <Typography sx={{ fontWeight: 900, fontSize: "1.1rem" }}>{format_rupiah(saldo.total_saldo_sistem)}</Typography>
+            </Box>
+          </Box>
+        )}
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
           <TextField label="Tahun Fiscal" size="small" type="number" value={tahun} onChange={(e) => setTahun(e.target.value)} sx={{ width: 130 }} />
           <Box sx={{ width: { xs: "100%", sm: 390 } }}>
@@ -169,7 +243,7 @@ export function RekonsiliasiBankPage() {
         maxWidth={620}
         actions={[
           { label: "Batal", variant: "ghost", onClick: () => setModalOpen(false) },
-          { label: saving ? "Menyimpan..." : "Simpan Rekonsiliasi", variant: "primary", onClick: save, disabled: saving || !form.rekening_id || (unmatched && !form.keterangan?.trim()) },
+          { label: saving ? "Menyimpan..." : "Simpan Rekonsiliasi", variant: "primary", onClick: save, disabled: saving || saldoLoading || !form.rekening_id || (unmatched && !form.keterangan?.trim()) },
         ]}
       >
         <Grid container spacing={2} sx={{ mt: 0.5 }}>
@@ -204,8 +278,10 @@ export function RekonsiliasiBankPage() {
           <Grid size={{ xs: 12 }}>
             <Box sx={{ p: 1.5, borderRadius: 1.5, bgcolor: unmatched ? "#fef2f2" : "#f0fdf4", border: `1px solid ${unmatched ? "#fecaca" : "#bbf7d0"}` }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                {unmatched ? <ErrorOutline sx={{ color: "#dc2626" }} /> : <CheckCircleOutline sx={{ color: "#15803d" }} />}
-                <Typography sx={{ fontWeight: 800, fontSize: "0.85rem", color: unmatched ? "#b91c1c" : "#166534" }}>{unmatched ? "UNMATCHED — perlu keterangan" : "MATCHED — saldo seimbang"}</Typography>
+                {saldoLoading ? <CheckCircleOutline sx={{ color: "#64748b" }} /> : unmatched ? <ErrorOutline sx={{ color: "#dc2626" }} /> : <CheckCircleOutline sx={{ color: "#15803d" }} />}
+                <Typography sx={{ fontWeight: 800, fontSize: "0.85rem", color: saldoLoading ? "#475569" : unmatched ? "#b91c1c" : "#166534" }}>
+                  {saldoLoading ? "MENGHITUNG SALDO..." : unmatched ? "UNMATCHED — perlu keterangan" : "MATCHED — saldo seimbang"}
+                </Typography>
               </Box>
               <Typography sx={{ mt: 0.6, fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
                 Saldo sistem: {format_rupiah(saldo.total_saldo_sistem)} · Selisih: <b>{format_rupiah(difference)}</b>

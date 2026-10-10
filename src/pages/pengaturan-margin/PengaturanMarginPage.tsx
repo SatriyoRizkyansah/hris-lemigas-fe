@@ -14,6 +14,7 @@ export function PengaturanMarginPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [rekeningOptions, setRekeningOptions] = useState<{ value: string; label: string }[]>([]);
 
   const unit_query = use_query({
     api_tag: "masterUnitKerja",
@@ -48,6 +49,19 @@ export function PengaturanMarginPage() {
   };
   useEffect(() => {
     fetchList();
+    const fetchRekening = async () => {
+      try {
+        const res = await fetch("/api/master-rekening", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        const raw = json?.data?.data ?? json?.data ?? json;
+        const rows = Array.isArray(raw) ? raw : (raw?.list ?? []);
+        setRekeningOptions(rows.filter((r: any) => r.status_aktif === "AKTIF").map((r: any) => ({ value: String(r.id), label: `${r.nama_bank} — ${r.nama_rekening} (${r.nomor_rekening})` })));
+      } catch (e: any) {
+        setError(e?.message ?? "Gagal memuat Master Rekening");
+      }
+    };
+    void fetchRekening();
   }, []);
 
   const total = items.reduce((s, x) => s + Number(x.persentase ?? 0), 0);
@@ -60,7 +74,7 @@ export function PengaturanMarginPage() {
       const res = await fetch(`/api/pengaturan-margin/${row.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ persentase: Number(row.persentase), unit_kerja_id: row.unit_kerja_id, nama_kamar: row.nama_kamar }),
+        body: JSON.stringify({ persentase: Number(row.persentase), unit_kerja_id: row.unit_kerja_id, nama_kamar: row.nama_kamar, rekening_id: row.rekening_id }),
       });
       if (!res.ok) throw new Error(await res.text());
       setMsg("Berhasil disimpan");
@@ -136,6 +150,8 @@ export function PengaturanMarginPage() {
                     />
                   </Box>
                 </Box>
+                <SearchableSelect label="Master Rekening Tujuan" value={String(row.rekening_id ?? "")} options={rekeningOptions} onChange={(v) => updateField(row.id, "rekening_id", v)} placeholder="Pilih rekening tujuan..." />
+                {!row.rekening_id && <Typography sx={{ fontSize: "0.72rem", color: "#b45309" }}>Rekening wajib dipilih sebelum distribusi margin.</Typography>}
                 <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 0.25 }}>
                   <SoftButton size="small" startIcon={<SaveOutlined sx={{ fontSize: 16 }} />} onClick={() => save(row)} disabled={saving === row.id} sx={{ height: 28, fontSize: "0.75rem" }}>
                     {saving === row.id ? "Menyimpan..." : "Simpan"}

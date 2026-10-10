@@ -59,6 +59,7 @@ export function RoDetailPage() {
   const [trx_saving, setTrxSaving] = useState(false);
   const [trx_deleting_id, setTrxDeletingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [silpa_saving, setSilpaSaving] = useState(false);
 
   const detail_query = use_query({
     api_tag: "masterRo",
@@ -164,6 +165,22 @@ export function RoDetailPage() {
       alert(e?.message ?? "Gagal simpan transaksi");
     } finally {
       setTrxSaving(false);
+    }
+  };
+
+  const handle_silpa = async () => {
+    if (!id || silpa_saving || !confirm("Tutup RO ini dan bawa sisa saldo ke RO baru tahun fiskal berikutnya pada proyek yang sama?")) return;
+    setSilpaSaving(true);
+    try {
+      const token = auth_signal.value.selectedToken || "";
+      const res = await fetch(`/api/ro/${id}/silpa`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!res.ok) throw new Error(await res.text());
+      await refresh_detail();
+      alert("SILPA berhasil dibuat sebagai RO baru pada proyek yang sama.");
+    } catch (e: any) {
+      alert(e?.message ?? "Gagal membuat SILPA RO");
+    } finally {
+      setSilpaSaving(false);
     }
   };
 
@@ -320,8 +337,13 @@ export function RoDetailPage() {
       headerAction={
         <Stack direction="row" spacing={1}>
           {can_edit_ro && (
-            <SoftButton startIcon={<EditOutlined />} variant="outlined" onClick={openEdit}>
+            <SoftButton startIcon={<EditOutlined />} variant="outlined" onClick={openEdit} disabled={silpa_saving || refreshing}>
               {isIncomplete ? "Lengkapi RO" : "Ubah RO"}
+            </SoftButton>
+          )}
+          {role === "superadmin" && d.status_ro === "AKTIF" && !d.parent_ro_id && (
+            <SoftButton variant="outlined" onClick={handle_silpa} disabled={silpa_saving || refreshing}>
+              {silpa_saving ? "Membuat SILPA..." : "Tutup & Bawa SILPA"}
             </SoftButton>
           )}
           <SoftButton startIcon={<ArrowBackOutlined />} variant="outlined" onClick={() => navigate("/ro")}>
@@ -335,7 +357,7 @@ export function RoDetailPage() {
           Data RO belum lengkap — lengkapi <b>No Kontrak, PJ, No SK, Periode SK</b> agar RO siap dipakai. Klik <b>Lengkapi RO</b>.
         </Alert>
       )}
-      {(refreshing || trx_saving || Boolean(trx_deleting_id)) && <LinearProgress sx={{ position: "sticky", top: 0, zIndex: 5 }} />}
+      {(refreshing || trx_saving || Boolean(trx_deleting_id) || silpa_saving) && <LinearProgress sx={{ position: "sticky", top: 0, zIndex: 5 }} />}
       <Box sx={{ py: 2.5, px: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
         {/* Anggaran summary */}
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 2 }}>

@@ -19,7 +19,7 @@ const TAHUN_OPTIONS = [0, 1, 2, 3].map((i) => {
   return { label: String(y), value: String(y) };
 });
 
-type RoRow = { key: string; nama_ro: string; kode_ro: string; id_unit_koordinator: string; plafon: string };
+type RoRow = { key: string; nama_ro: string; kode_ro: string; id_unit_koordinator: string; id_rekening: string; plafon: string };
 
 export function ProyekPage() {
   const navigate = useNavigate();
@@ -39,6 +39,7 @@ export function ProyekPage() {
   const [distLoading, setDistLoading] = useState(false);
   const [detail_ro_list, setDetailRoList] = useState<any[]>([]);
   const [pengaturan, setPengaturan] = useState<any[]>([]);
+  const [rekening_options, setRekeningOptions] = useState<{ value: string; label: string }[]>([]);
   const token = auth_signal.value.selectedToken || "";
 
   const list_query = use_query({
@@ -50,6 +51,16 @@ export function ProyekPage() {
   const rows: any[] = unwrap_list(body);
   const pagination = unwrap_pagination(body);
   const set_field = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetch("/api/master-rekening", { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => r.json())
+      .then((body) => {
+        const rows = Array.isArray(body?.data) ? body.data : [];
+        setRekeningOptions(rows.filter((r: any) => r.status_aktif === "AKTIF").map((r: any) => ({ value: r.id, label: `${r.nama_rekening} — ${r.nomor_rekening}` })));
+      })
+      .catch(() => setRekeningOptions([]));
+  }, [token]);
 
   const unit_query = use_query({ api_tag: "masterUnitKerja", api_method: "unitKerjaGetControllerGetData", api_query: [{ tipe_unit: "KOORDINATOR", limit: 200 } as any] } as any);
   const unit_options = (() => {
@@ -95,7 +106,7 @@ export function ProyekPage() {
   const open_create = () => {
     setEditing(null);
     setForm({ kode_proyek: "", nama_proyek: "", tahun_fiscal: String(current_year()), sumber_pendanaan: "", nilai_kontrak: "", total_direct_cost: "", total_margin: "" });
-    setRoRows([{ key: String(Date.now()), nama_ro: "", kode_ro: "", id_unit_koordinator: "", plafon: "" }]);
+    setRoRows([{ key: String(Date.now()), nama_ro: "", kode_ro: "", id_unit_koordinator: "", id_rekening: "", plafon: "" }]);
     set_modal_open(true);
   };
   const open_edit = (row: any) => {
@@ -187,6 +198,7 @@ export function ProyekPage() {
           nama_ro: r.nama_ro,
           kode_ro: r.kode_ro || undefined,
           id_unit_koordinator: r.id_unit_koordinator,
+          rekening_id: r.id_rekening || undefined,
           plafon: Number(r.plafon),
         }));
       }
@@ -194,7 +206,7 @@ export function ProyekPage() {
     }
   };
 
-  const addRoRow = () => setRoRows((prev) => [...prev, { key: String(Date.now() + Math.random()), nama_ro: "", kode_ro: "", id_unit_koordinator: "", plafon: "" }]);
+  const addRoRow = () => setRoRows((prev) => [...prev, { key: String(Date.now() + Math.random()), nama_ro: "", kode_ro: "", id_unit_koordinator: "", id_rekening: "", plafon: "" }]);
   const removeRoRow = (key: string) => setRoRows((prev) => prev.filter((r) => r.key !== key));
   const updateRoRow = (key: string, field: keyof RoRow, val: string) => setRoRows((prev) => prev.map((r) => (r.key === key ? { ...r, [field]: val } : r)));
 
@@ -353,6 +365,15 @@ export function ProyekPage() {
                     </Grid>
                     <Grid size={{ xs: 12, sm: 7 }}>
                       <SearchableSelect label="Unit Koordinator" value={row.id_unit_koordinator} options={unit_options} onChange={(v) => updateRoRow(row.key, "id_unit_koordinator", String(v))} placeholder="Pilih unit..." />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <SearchableSelect
+                        label="Master Rekening RO"
+                        value={row.id_rekening}
+                        options={[{ value: "", label: "Belum dipetakan" }, ...rekening_options]}
+                        onChange={(v) => updateRoRow(row.key, "id_rekening", String(v))}
+                        placeholder="Pilih rekening RO..."
+                      />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 5 }}>
                       <RupiahField label="Plafon" value={row.plafon} onChange={(n) => updateRoRow(row.key, "plafon", String(n))} />
