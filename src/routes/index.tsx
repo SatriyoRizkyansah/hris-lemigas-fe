@@ -13,6 +13,7 @@ const ProyekPage = lazy(() => import("../pages/master-proyek/ProyekPage"));
 const RoPage = lazy(() => import("../pages/master-ro/RoPage"));
 const RoDetailPage = lazy(() => import("../pages/master-ro/RoDetailPage"));
 const DanaOperasionalPage = lazy(() => import("../pages/master-dana-operasional/DanaOperasionalPage"));
+const DanaOperasionalDetailPage = lazy(() => import("../pages/master-dana-operasional/DanaOperasionalDetailPage"));
 const SkPage = lazy(() => import("../pages/sk/SkPage"));
 const AlokasiGajiPage = lazy(() => import("../pages/alokasi-gaji/AlokasiGajiPage"));
 const RekapAlokasiPage = lazy(() => import("../pages/alokasi-gaji/RekapAlokasiPage"));
@@ -117,6 +118,14 @@ export function AppRoutes() {
             element={
               <RequireRole roles={ALL_MANAGEMENT}>
                 <DanaOperasionalPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/dana-operasional/:id"
+            element={
+              <RequireRole roles={ALL_MANAGEMENT}>
+                <DanaOperasionalDetailPage />
               </RequireRole>
             }
           />

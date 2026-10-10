@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Grid, TextField, Typography } from "@mui/material";
+import { Box, Grid, TextField, Typography, Chip } from "@mui/material";
 import { AddOutlined, EditOutlined, DeleteOutlined, VisibilityOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
 import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, SearchableSelect, ServerDataTable, SoftButton, StatusChip } from "../../components";
+import { RupiahField } from "../../components/common/RupiahField";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
@@ -25,9 +26,14 @@ function Field({ label, value, onChange, required, disabled, type }: any) {
   );
 }
 
+const isIncomplete = (row: any) => !row.no_kontrak || !row.pj || !row.no_sk || !row.mulai_sk || !row.berakhir_sk;
+
 export function RoPage() {
   const navigate = useNavigate();
-  const can_edit = resolve_current_role() === "superadmin";
+  const role = resolve_current_role();
+  const can_edit = role === "superadmin";
+  const can_edit_own = role === "superadmin" || role === "koordinator";
+  const can_delete = role === "superadmin";
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -147,7 +153,17 @@ export function RoPage() {
         </Box>
       ),
     },
-    { id: "status_ro", label: "Status", width: 110, render: (_: any, row: any) => <StatusChip label={String(row.status_ro ?? "AKTIF")} variant={status_variant(row.status_ro)} size="small" /> },
+    {
+      id: "status_ro",
+      label: "Status",
+      width: 130,
+      render: (_: any, row: any) => (
+        <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", flexWrap: "wrap" }}>
+          <StatusChip label={String(row.status_ro ?? "AKTIF")} variant={status_variant(row.status_ro)} size="small" />
+          {isIncomplete(row) && <Chip label="Belum lengkap" size="small" color="warning" sx={{ height: 18, fontSize: "0.65rem" }} />}
+        </Box>
+      ),
+    },
     {
       id: "nama_unit_koordinator",
       label: "Koor",
@@ -171,12 +187,12 @@ export function RoPage() {
       id: "aksi",
       label: "Aksi",
       align: "right" as const,
-      width: 140,
+      width: 160,
       render: (_: any, row: any) => (
         <ActionButtonGroup>
           <ActionButton variant="edit" title="Detail" icon={<VisibilityOutlined fontSize="small" />} onClick={() => open_detail(row)} />
-          {can_edit && <ActionButton variant="edit" title="Ubah" icon={<EditOutlined fontSize="small" />} onClick={() => open_edit(row)} />}
-          {can_edit && <ActionButton variant="delete" title="Hapus" icon={<DeleteOutlined fontSize="small" />} onClick={() => setConfirmTarget(row)} />}
+          {can_edit_own && <ActionButton variant="edit" title={isIncomplete(row) ? "Lengkapi" : "Ubah"} icon={<EditOutlined fontSize="small" />} onClick={() => open_edit(row)} />}
+          {can_delete && <ActionButton variant="delete" title="Hapus" icon={<DeleteOutlined fontSize="small" />} onClick={() => setConfirmTarget(row)} />}
         </ActionButtonGroup>
       ),
     },
@@ -306,7 +322,7 @@ export function RoPage() {
             <Field label="Berakhir SK" value={form.berakhir_sk} onChange={(v: string) => set_field("berakhir_sk", v)} type="date" />
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <Field label="Total Plafon (Rp)" value={form.total_plafon} onChange={(v: string) => set_field("total_plafon", v)} required type="number" />
+            <RupiahField label="Total Plafon" value={form.total_plafon} onChange={(n) => set_field("total_plafon", n)} required />
           </Grid>
         </Grid>
       </Modal>

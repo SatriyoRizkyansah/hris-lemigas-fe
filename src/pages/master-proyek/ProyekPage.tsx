@@ -7,6 +7,7 @@ import { ActionButton, ActionButtonGroup, ConfirmDialog, InfoCard, Modal, Server
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
+import { RupiahField } from "../../components/common/RupiahField";
 import { resolve_current_role, current_year, format_rupiah, unwrap_list, unwrap_pagination, kategori_kamar_label } from "../../common/hris";
 import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
@@ -301,13 +302,13 @@ export function ProyekPage() {
                 <Field label="Sumber Pendanaan" value={form.sumber_pendanaan} onChange={(v: string) => set_field("sumber_pendanaan", v)} placeholder="APBN 2026" />
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <Field label="Nilai Kontrak (Rp)" value={form.nilai_kontrak} onChange={(v: string) => set_field("nilai_kontrak", v)} required type="number" />
+                <RupiahField label="Nilai Kontrak" value={form.nilai_kontrak} onChange={(n) => set_field("nilai_kontrak", n)} required />
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <Field label="Total Direct Cost (Rp)" value={form.total_direct_cost} onChange={(v: string) => set_field("total_direct_cost", v)} required type="number" />
+                <RupiahField label="Total Direct Cost" value={form.total_direct_cost} onChange={(n) => set_field("total_direct_cost", n)} required />
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <Field label="Total Margin (Rp)" value={form.total_margin} onChange={(v: string) => set_field("total_margin", v)} required type="number" />
+                <RupiahField label="Total Margin" value={form.total_margin} onChange={(n) => set_field("total_margin", n)} required />
               </Grid>
               <Grid size={{ xs: 12 }}>
                 {kontrakMismatch ? (
@@ -354,7 +355,7 @@ export function ProyekPage() {
                       <SearchableSelect label="Unit Koordinator" value={row.id_unit_koordinator} options={unit_options} onChange={(v) => updateRoRow(row.key, "id_unit_koordinator", String(v))} placeholder="Pilih unit..." />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 5 }}>
-                      <TextField label="Plafon (Rp)" size="small" fullWidth type="number" value={row.plafon} onChange={(e) => updateRoRow(row.key, "plafon", e.target.value)} />
+                      <RupiahField label="Plafon" value={row.plafon} onChange={(n) => updateRoRow(row.key, "plafon", String(n))} />
                     </Grid>
                   </Grid>
                 </Box>

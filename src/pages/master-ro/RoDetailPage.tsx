@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Grid, TextField, Typography, Stack, LinearProgress } from "@mui/material";
+import { Box, Grid, TextField, Typography, Stack, LinearProgress, Alert, Tabs, Tab, Chip } from "@mui/material";
 import { ArrowBackOutlined, AddOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { ActionButton, ActionButtonGroup, DataTable, FileUploadInput, FileViewerButton, InfoCard, Modal, SoftButton, StatusChip } from "../../components";
+import { ActionButton, ActionButtonGroup, DataTable, FileUploadInput, InfoCard, Modal, SearchableSelect, SoftButton, StatusChip, ThemedDatePicker } from "../../components";
+import { RupiahField } from "../../components/common/RupiahField";
 import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
-import { format_rupiah, format_date, status_variant } from "../../common/hris";
+import use_mutation from "@Hooks/api-use-mutation";
+import { format_rupiah, format_date, status_variant, STATUS_RO_OPTIONS } from "../../common/hris";
 import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 import { resolve_current_role } from "../../common/hris";
 
@@ -29,13 +31,31 @@ function Field({ label, value, onChange, required, disabled, type }: any) {
 export function RoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const can_manage_ledger = resolve_current_role() === "superadmin" || resolve_current_role() === "koordinator";
+  const role = resolve_current_role();
+  const can_manage_ledger = role === "superadmin" || role === "koordinator";
+  const can_edit_ro = role === "superadmin" || role === "koordinator";
 
   const [rab_file, setRabFile] = useState<File | null>(null);
   const [rab_uploading, setRabUploading] = useState(false);
+  const [sk_file, setSkFile] = useState<File | null>(null);
+  const [sk_uploading, setSkUploading] = useState(false);
+  const toDate = (v: string): Date | null => {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
+  const fromDate = (d: Date | null): string => {
+    if (!d) return "";
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
   const [trx_modal_open, setTrxModalOpen] = useState(false);
   const [trx_form, setTrxForm] = useState<any>({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
   const [trx_editing, setTrxEditing] = useState<any>(null);
+  const [active_tab, setActiveTab] = useState<"ledger" | "alokasi">("ledger");
+  const [ledger_filter, setLedgerFilter] = useState("all");
+  const [alokasi_filter, setAlokasiFilter] = useState("all");
+  const [edit_open, setEditOpen] = useState(false);
+  const [edit_form, setEditForm] = useState<any>({});
 
   const detail_query = use_query({
     api_tag: "masterRo",
@@ -62,6 +82,9 @@ export function RoDetailPage() {
   const total_kredit = ledger_resp?.total_kredit ?? 0;
   const saldo_ledger = ledger_resp?.saldo_ledger ?? 0;
   const alokasi_list: any[] = d?.alokasi_list ?? [];
+  const filtered_ledger = ledger.filter((row) => ledger_filter === "all" || (ledger_filter === "debit" ? Number(row.debit) > 0 : Number(row.kredit) > 0));
+  const filtered_alokasi = alokasi_list.filter((row) => alokasi_filter === "all" || String(row.status ?? "").toUpperCase() === alokasi_filter);
+  const alokasi_status_options = Array.from(new Set(alokasi_list.map((row) => String(row.status ?? "").toUpperCase()).filter(Boolean)));
 
   // balance breakdown from backend (new fields) fallback to computed
   const total_plafon = Number(d?.total_plafon ?? 0);
@@ -85,6 +108,23 @@ export function RoDetailPage() {
       alert(e?.message ?? "Gagal upload RAB");
     } finally {
       setRabUploading(false);
+    }
+  };
+  const handle_sk_upload = async () => {
+    if (!id || !sk_file) return;
+    setSkUploading(true);
+    try {
+      const token = auth_signal.value.selectedToken || "";
+      const fd = new FormData();
+      fd.append("file", sk_file);
+      const res = await fetch(`/api/ro/${id}/sk`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      setSkFile(null);
+      detail_query.call_back();
+    } catch (e: any) {
+      alert(e?.message ?? "Gagal upload SK");
+    } finally {
+      setSkUploading(false);
     }
   };
 
@@ -127,6 +167,49 @@ export function RoDetailPage() {
     }
   };
 
+  const update_mutation: any = use_mutation({
+    api_tag: "masterRo",
+    api_method: "roControllerUpdate",
+    options: {
+      call_back: () => {
+        detail_query.call_back();
+        ledger_query.call_back();
+      },
+      will_exec_after_success: () => setEditOpen(false),
+    },
+  });
+  const openEdit = () => {
+    if (!d) return;
+    setEditForm({
+      nama_ro: d.nama_ro ?? "",
+      total_plafon: d.total_plafon ?? "",
+      no_kontrak: d.no_kontrak ?? "",
+      pj: d.pj ?? "",
+      no_sk: d.no_sk ?? "",
+      mulai_sk: d.mulai_sk ? String(d.mulai_sk).slice(0, 10) : "",
+      berakhir_sk: d.berakhir_sk ? String(d.berakhir_sk).slice(0, 10) : "",
+      status_ro: d.status_ro ?? "AKTIF",
+    });
+    setEditOpen(true);
+  };
+  const submitEdit = () => {
+    if (!id) return;
+    update_mutation([
+      id,
+      {
+        nama_ro: edit_form.nama_ro || undefined,
+        total_plafon: edit_form.total_plafon !== "" ? Number(edit_form.total_plafon) : undefined,
+        no_kontrak: edit_form.no_kontrak || undefined,
+        pj: edit_form.pj || undefined,
+        no_sk: edit_form.no_sk || undefined,
+        mulai_sk: edit_form.mulai_sk || undefined,
+        berakhir_sk: edit_form.berakhir_sk || undefined,
+        status_ro: edit_form.status_ro || undefined,
+      },
+    ] as any);
+  };
+  const isIncomplete = !d?.no_kontrak || !d?.pj || !d?.no_sk || !d?.mulai_sk || !d?.berakhir_sk;
+
   const ledger_columns: Column<any>[] = [
     { id: "no", label: "No", width: 56, render: (_: any, _r: any, idx?: number) => String((idx ?? 0) + 1) },
     { id: "nama_kegiatan", label: "Nama Kegiatan", width: 220, render: (_: any, r: any) => <Box sx={{ fontSize: "0.82rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.nama_kegiatan ?? "-")}</Box> },
@@ -146,7 +229,13 @@ export function RoDetailPage() {
       width: 130,
       render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontSize: "0.82rem", color: Number(r.kredit) ? "#16a34a" : undefined }}>{Number(r.kredit) ? format_rupiah(r.kredit) : "-"}</Box>,
     },
-    { id: "saldo", label: "Saldo Berjalan", align: "right", width: 130, render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem", color: (r.saldo ?? 0) < 0 ? "#dc2626" : "inherit" }}>{format_rupiah(r.saldo ?? 0)}</Box> },
+    {
+      id: "saldo",
+      label: "Saldo Berjalan",
+      align: "right",
+      width: 130,
+      render: (_: any, r: any) => <Box sx={{ whiteSpace: "nowrap", fontWeight: 600, fontSize: "0.82rem", color: (r.saldo ?? 0) < 0 ? "#dc2626" : "inherit" }}>{format_rupiah(r.saldo ?? 0)}</Box>,
+    },
     { id: "keterangan", label: "Keterangan", width: 180, render: (_: any, r: any) => <Box sx={{ fontSize: "0.8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.keterangan ?? "-")}</Box> },
     ...(can_manage_ledger
       ? [
@@ -209,11 +298,23 @@ export function RoDetailPage() {
       headerTitle={String(d.nama_ro ?? "Detail RO")}
       headerDescription={`${String(d.kode_ro ?? "-")} · ${String(d.proyek?.nama_proyek ?? d.nama_proyek ?? "-")} · ${String(d.tahun_fiscal ?? "-")}`}
       headerAction={
-        <SoftButton startIcon={<ArrowBackOutlined />} variant="outlined" onClick={() => navigate("/ro")}>
-          Kembali
-        </SoftButton>
+        <Stack direction="row" spacing={1}>
+          {can_edit_ro && (
+            <SoftButton startIcon={<EditOutlined />} variant="outlined" onClick={openEdit}>
+              {isIncomplete ? "Lengkapi RO" : "Ubah RO"}
+            </SoftButton>
+          )}
+          <SoftButton startIcon={<ArrowBackOutlined />} variant="outlined" onClick={() => navigate("/ro")}>
+            Kembali
+          </SoftButton>
+        </Stack>
       }
     >
+      {isIncomplete && can_edit_ro && (
+        <Alert severity="warning" sx={{ mx: { xs: 2, sm: 3 }, mt: 2 }}>
+          Data RO belum lengkap — lengkapi <b>No Kontrak, PJ, No SK, Periode SK</b> agar RO siap dipakai. Klik <b>Lengkapi RO</b>.
+        </Alert>
+      )}
       <Box sx={{ py: 2.5, px: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
         {/* Anggaran summary */}
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 2 }}>
@@ -282,25 +383,40 @@ export function RoDetailPage() {
           </Box>
         </Box>
 
-        {/* RAB */}
-        <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-          {/* <Typography sx={{ fontWeight: 700, fontSize: "0.9rem", mb: 1.5 }}>Dokumen RAB</Typography> */}
-          <FileUploadInput label="DOKUMEN RAB" value={rab_file} onChange={setRabFile} existingFileUrl={d.file_rab ?? null} accept=".pdf,.xlsx,.xls" disabled={!can_manage_ledger} />
-          <Stack direction="row" spacing={1} sx={{ mt: 1.5, justifyContent: "flex-end", alignItems: "center" }}>
-            {d.file_rab && <FileViewerButton fileUrl={d.file_rab} />}
-            {can_manage_ledger && rab_file && (
-              <SoftButton size="small" disabled={rab_uploading} onClick={handle_rab_upload}>
-                {rab_uploading ? "Mengunggah..." : "Upload RAB"}
-              </SoftButton>
-            )}
-          </Stack>
+        {/* RAB + SK */}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+          <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
+            <FileUploadInput label="DOKUMEN RAB" value={rab_file} onChange={setRabFile} existingFileUrl={d.file_rab ?? null} accept=".pdf,.xlsx,.xls" disabled={!can_manage_ledger} />
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5, justifyContent: "flex-end", alignItems: "center" }}>
+              {/* {d.file_rab && <FileViewerButton fileUrl={d.file_rab} />} */}
+              {can_manage_ledger && rab_file && (
+                <SoftButton size="small" disabled={rab_uploading} onClick={handle_rab_upload}>
+                  {rab_uploading ? "Mengunggah..." : "Upload RAB"}
+                </SoftButton>
+              )}
+            </Stack>
+          </Box>
+          <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
+            <FileUploadInput label="DOKUMEN SK" value={sk_file} onChange={setSkFile} existingFileUrl={d.file_sk ?? null} accept=".pdf" disabled={!can_manage_ledger} />
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5, justifyContent: "flex-end", alignItems: "center" }}>
+              {/* {d.file_sk && <FileViewerButton fileUrl={d.file_sk} />} */}
+              {can_manage_ledger && sk_file && (
+                <SoftButton size="small" disabled={sk_uploading} onClick={handle_sk_upload}>
+                  {sk_uploading ? "Mengunggah..." : "Upload SK"}
+                </SoftButton>
+              )}
+            </Stack>
+          </Box>
         </Box>
 
         {/* Ledger */}
-        <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5, flexWrap: "wrap", gap: 1 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: "0.95rem" }}>Ledger Dana RO</Typography>
-            {can_manage_ledger && (
+        <Box sx={{ border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)", overflow: "hidden" }}>
+          <Box sx={{ px: 2, pt: 1, borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+            <Tabs value={active_tab} onChange={(_, value) => setActiveTab(value)} sx={{ minHeight: 42, "& .MuiTab-root": { minHeight: 42, textTransform: "none", fontSize: "0.84rem", fontWeight: 700 } }}>
+              <Tab value="ledger" label={`Ledger (${ledger.length})`} />
+              <Tab value="alokasi" label={`Alokasi Gaji TA (${alokasi_list.length})`} />
+            </Tabs>
+            {active_tab === "ledger" && can_manage_ledger && (
               <SoftButton
                 size="small"
                 startIcon={<AddOutlined />}
@@ -314,110 +430,171 @@ export function RoDetailPage() {
               </SoftButton>
             )}
           </Box>
-          <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, overflow: "hidden" }}>
-            <DataTable
-              columns={ledger_columns}
-              data={ledger}
-              title=""
-              hideSearch
-              hidePagination
-              emptyState={<Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center", display: "block" }}>Belum ada transaksi ledger.</Typography>}
-            />
-          </Box>
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 3, mt: 1.5, p: 1.5, border: "1px solid var(--border)", borderRadius: 1, bgcolor: "var(--muted)", flexWrap: "wrap" }}>
-            <Box sx={{ textAlign: "right" }}>
-              <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TOTAL DEBIT</Typography>
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, color: "#dc2626" }}>{format_rupiah(total_debit)}</Typography>
-            </Box>
-            <Box sx={{ textAlign: "right" }}>
-              <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TOTAL KREDIT</Typography>
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, color: "#16a34a" }}>{format_rupiah(total_kredit)}</Typography>
-            </Box>
-            <Box sx={{ textAlign: "right" }}>
-              <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>SALDO LEDGER</Typography>
-              <Typography sx={{ fontSize: "0.9rem", fontWeight: 800 }}>{format_rupiah(saldo_ledger)}</Typography>
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Alokasi */}
-        <Box sx={{ p: 2.5, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", mb: 1.5 }}>Alokasi Gaji TA (dari RO ini)</Typography>
-          <Box sx={{ border: "1px solid var(--border)", borderRadius: 1.5, overflow: "hidden" }}>
-            <DataTable
-              columns={[
-                {
-                  id: "no",
-                  label: "No",
-                  width: 52,
-                  render: (_: any, _r: any, idx?: number) => String((idx ?? 0) + 1),
-                },
-                {
-                  id: "nama_pegawai",
-                  label: "Pegawai",
-                  render: (_: any, a: any) => (
-                    <Box>
-                      <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--foreground)" }}>
-                        {String(a.pegawai?.nama ?? a.nama_pegawai ?? a.pegawai_id ?? "-")}
-                      </Typography>
-                      <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>
-                        {String(a.pegawai?.nip_nik ?? a.nip_nik ?? "")}
-                      </Typography>
-                    </Box>
-                  ),
-                },
-                {
-                  id: "periode",
-                  label: "Periode",
-                  width: 110,
-                  render: (_: any, a: any) => (
-                    <Typography sx={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                      {String(a.periode_bulan ?? "-")}/{String(a.periode_tahun ?? "-")}
-                    </Typography>
-                  ),
-                },
-                {
-                  id: "status",
-                  label: "Status",
-                  width: 100,
-                  render: (_: any, a: any) => (
-                    <StatusChip label={String(a.status ?? "-")} variant={status_variant(a.status)} size="small" />
-                  ),
-                },
-                {
-                  id: "jumlah",
-                  label: "Jumlah",
-                  align: "right" as const,
-                  width: 150,
-                  render: (_: any, a: any) => (
-                    <Typography sx={{ fontSize: "0.85rem", fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {format_rupiah(a.jumlah)}
-                    </Typography>
-                  ),
-                },
-              ]}
-              data={alokasi_list}
-              title=""
-              hideSearch
-              hidePagination
-              emptyState={
-                <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center", display: "block" }}>
-                  Belum ada alokasi gaji TA untuk RO ini.
-                </Typography>
-              }
-            />
-          </Box>
-          {alokasi_list.length > 0 && (
-            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.5, px: 1 }}>
-              <Box sx={{ textAlign: "right" }}>
-                <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)", fontWeight: 600 }}>TOTAL ALOKASI</Typography>
-                <Typography sx={{ fontSize: "0.9rem", fontWeight: 800 }}>
-                  {format_rupiah(alokasi_list.reduce((s: number, a: any) => s + Number(a.jumlah ?? 0), 0))}
-                </Typography>
+          {active_tab === "ledger" ? (
+            <Box sx={{ p: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+                <Typography sx={{ fontSize: "0.76rem", fontWeight: 700, color: "var(--muted-foreground)" }}>FILTER TRANSAKSI</Typography>
+                {[
+                  ["all", "Semua"],
+                  ["debit", "Debit"],
+                  ["kredit", "Kredit"],
+                ].map(([value, label]) => (
+                  <Chip
+                    key={value}
+                    label={label}
+                    size="small"
+                    variant={ledger_filter === value ? "filled" : "outlined"}
+                    onClick={() => setLedgerFilter(value)}
+                    sx={{
+                      height: 28,
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
+                      color: ledger_filter === value ? "#fff" : "var(--foreground)",
+                      bgcolor: ledger_filter === value ? "var(--primary)" : "var(--card)",
+                      borderColor: ledger_filter === value ? "var(--primary)" : "var(--border)",
+                      "&:hover": { bgcolor: ledger_filter === value ? "var(--primary)" : "var(--muted)", borderColor: "var(--primary)" },
+                      "& .MuiChip-label": { opacity: 1 },
+                    }}
+                  />
+                ))}
               </Box>
+              <DataTable
+                columns={ledger_columns}
+                data={filtered_ledger}
+                title=""
+                searchPlaceholder="Cari transaksi..."
+                hidePagination
+                emptyState={<Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center", display: "block" }}>Belum ada transaksi ledger.</Typography>}
+              />
+              <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 3, mt: 1.5, p: 1.25, border: "1px solid var(--border)", borderRadius: 1, bgcolor: "var(--muted)", flexWrap: "wrap" }}>
+                <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: "#dc2626" }}>Debit {format_rupiah(total_debit)}</Typography>
+                <Typography sx={{ fontSize: "0.78rem", fontWeight: 700, color: "#16a34a" }}>Kredit {format_rupiah(total_kredit)}</Typography>
+                <Typography sx={{ fontSize: "0.82rem", fontWeight: 800 }}>Saldo {format_rupiah(saldo_ledger)}</Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ p: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5, flexWrap: "wrap" }}>
+                <Typography sx={{ fontSize: "0.76rem", fontWeight: 700, color: "var(--muted-foreground)" }}>FILTER STATUS</Typography>
+                {["all", ...alokasi_status_options].map((value) => (
+                  <Chip
+                    key={value}
+                    label={value === "all" ? "Semua" : value}
+                    size="small"
+                    variant={alokasi_filter === value ? "filled" : "outlined"}
+                    onClick={() => setAlokasiFilter(value)}
+                    sx={{
+                      height: 28,
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
+                      color: alokasi_filter === value ? "#fff" : "var(--foreground)",
+                      bgcolor: alokasi_filter === value ? "var(--primary)" : "var(--card)",
+                      borderColor: alokasi_filter === value ? "var(--primary)" : "var(--border)",
+                      "&:hover": { bgcolor: alokasi_filter === value ? "var(--primary)" : "var(--muted)", borderColor: "var(--primary)" },
+                      "& .MuiChip-label": { opacity: 1 },
+                    }}
+                  />
+                ))}
+              </Box>
+              <DataTable
+                columns={[
+                  {
+                    id: "pegawai",
+                    label: "Pegawai",
+                    render: (_: any, a: any) => (
+                      <Box>
+                        <Typography sx={{ fontSize: "0.84rem", fontWeight: 600 }}>{String(a.pegawai?.nama ?? a.nama_pegawai ?? a.pegawai_id ?? "-")}</Typography>
+                        <Typography sx={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{String(a.pegawai?.nip_nik ?? a.nip_nik ?? "")}</Typography>
+                      </Box>
+                    ),
+                  },
+                  { id: "periode", label: "Periode", width: 110, render: (_: any, a: any) => `${String(a.periode_bulan ?? "-")}/${String(a.periode_tahun ?? "-")}` },
+                  { id: "status", label: "Status", width: 100, render: (_: any, a: any) => <StatusChip label={String(a.status ?? "-")} variant={status_variant(a.status)} size="small" /> },
+                  { id: "jumlah", label: "Jumlah", align: "right", width: 150, render: (_: any, a: any) => <Typography sx={{ fontSize: "0.84rem", fontWeight: 700, whiteSpace: "nowrap" }}>{format_rupiah(a.jumlah)}</Typography> },
+                ]}
+                data={filtered_alokasi}
+                title=""
+                searchPlaceholder="Cari pegawai..."
+                hidePagination
+                emptyState={<Typography sx={{ fontSize: "0.85rem", color: "var(--muted-foreground)", py: 2, textAlign: "center", display: "block" }}>Belum ada alokasi gaji TA untuk RO ini.</Typography>}
+              />
             </Box>
           )}
         </Box>
+
+        {/* Transaction Modal */}
+        <Modal
+          open={trx_modal_open}
+          onClose={() => setTrxModalOpen(false)}
+          title={trx_editing ? "Ubah Transaksi" : "Tambah Transaksi"}
+          description="Isi debit untuk pengeluaran, kredit untuk uang masuk."
+          maxWidth={600}
+          actions={[
+            { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false) },
+            { label: trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit },
+          ]}
+        >
+          <Grid container spacing={2} sx={{ mt: 0.5, pt: 1 }}>
+            <Grid size={{ xs: 12 }}>
+              <Field label="Nama Kegiatan" value={trx_form.nama_kegiatan} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, nama_kegiatan: v }))} required />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Field label="No Kuitansi" value={trx_form.no_kuitansi} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, no_kuitansi: v }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <ThemedDatePicker label="Tanggal" value={toDate(trx_form.tanggal)} onChange={(d) => setTrxForm((f: any) => ({ ...f, tanggal: fromDate(d) }))} required />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <RupiahField label="Debit" value={trx_form.debit} onChange={(n) => setTrxForm((f: any) => ({ ...f, debit: n }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <RupiahField label="Kredit" value={trx_form.kredit} onChange={(n) => setTrxForm((f: any) => ({ ...f, kredit: n }))} />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Field label="Keterangan" value={trx_form.keterangan} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, keterangan: v }))} />
+            </Grid>
+          </Grid>
+        </Modal>
+
+        {/* Edit RO Modal */}
+        <Modal
+          open={edit_open}
+          onClose={() => setEditOpen(false)}
+          title={isIncomplete ? "Lengkapi RO" : "Ubah RO"}
+          description="Lengkapi data RO yang belum lengkap. Field kosong akan diisi."
+          maxWidth={700}
+          actions={[
+            { label: "Batal", variant: "ghost", onClick: () => setEditOpen(false) },
+            { label: "Simpan", variant: "primary", onClick: submitEdit },
+          ]}
+        >
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12 }}>
+              <Field label="Nama RO" value={edit_form.nama_ro} onChange={(v: string) => setEditForm((f: any) => ({ ...f, nama_ro: v }))} required />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Field label="No Kontrak" value={edit_form.no_kontrak} onChange={(v: string) => setEditForm((f: any) => ({ ...f, no_kontrak: v }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Field label="PJ" value={edit_form.pj} onChange={(v: string) => setEditForm((f: any) => ({ ...f, pj: v }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Field label="No SK" value={edit_form.no_sk} onChange={(v: string) => setEditForm((f: any) => ({ ...f, no_sk: v }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <SearchableSelect label="Status RO" value={String(edit_form.status_ro ?? "AKTIF")} options={STATUS_RO_OPTIONS} onChange={(v: string) => setEditForm((f: any) => ({ ...f, status_ro: v }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <ThemedDatePicker label="Mulai SK" value={toDate(edit_form.mulai_sk)} onChange={(d) => setEditForm((f: any) => ({ ...f, mulai_sk: fromDate(d) }))} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <ThemedDatePicker label="Berakhir SK" value={toDate(edit_form.berakhir_sk)} onChange={(d) => setEditForm((f: any) => ({ ...f, berakhir_sk: fromDate(d) }))} />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <RupiahField label="Total Plafon" value={edit_form.total_plafon} onChange={(n) => setEditForm((f: any) => ({ ...f, total_plafon: n }))} required />
+            </Grid>
+          </Grid>
+        </Modal>
       </Box>
 
       <Modal
@@ -439,16 +616,55 @@ export function RoDetailPage() {
             <Field label="No Kuitansi" value={trx_form.no_kuitansi} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, no_kuitansi: v }))} />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Tanggal" value={trx_form.tanggal} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, tanggal: v }))} type="date" required />
+            <ThemedDatePicker label="Tanggal" value={toDate(trx_form.tanggal)} onChange={(d) => setTrxForm((f: any) => ({ ...f, tanggal: fromDate(d) }))} required />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Debit (Rp)" value={trx_form.debit} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, debit: v }))} type="number" />
+            <RupiahField label="Debit" value={trx_form.debit} onChange={(n) => setTrxForm((f: any) => ({ ...f, debit: n }))} />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
-            <Field label="Kredit (Rp)" value={trx_form.kredit} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, kredit: v }))} type="number" />
+            <RupiahField label="Kredit" value={trx_form.kredit} onChange={(n) => setTrxForm((f: any) => ({ ...f, kredit: n }))} />
           </Grid>
           <Grid size={{ xs: 12 }}>
             <Field label="Keterangan" value={trx_form.keterangan} onChange={(v: string) => setTrxForm((f: any) => ({ ...f, keterangan: v }))} />
+          </Grid>
+        </Grid>
+      </Modal>
+
+      <Modal
+        open={edit_open}
+        onClose={() => setEditOpen(false)}
+        title={isIncomplete ? "Lengkapi RO" : "Ubah RO"}
+        description="Lengkapi data RO yang belum lengkap. Field kosong akan diisi."
+        maxWidth={700}
+        actions={[
+          { label: "Batal", variant: "ghost", onClick: () => setEditOpen(false) },
+          { label: "Simpan", variant: "primary", onClick: submitEdit },
+        ]}
+      >
+        <Grid container spacing={2} sx={{ mt: 0.5 }}>
+          <Grid size={{ xs: 12 }}>
+            <Field label="Nama RO" value={edit_form.nama_ro} onChange={(v: string) => setEditForm((f: any) => ({ ...f, nama_ro: v }))} required />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Field label="No Kontrak" value={edit_form.no_kontrak} onChange={(v: string) => setEditForm((f: any) => ({ ...f, no_kontrak: v }))} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Field label="PJ" value={edit_form.pj} onChange={(v: string) => setEditForm((f: any) => ({ ...f, pj: v }))} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Field label="No SK" value={edit_form.no_sk} onChange={(v: string) => setEditForm((f: any) => ({ ...f, no_sk: v }))} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <SearchableSelect label="Status RO" value={String(edit_form.status_ro ?? "AKTIF")} options={STATUS_RO_OPTIONS} onChange={(v: string) => setEditForm((f: any) => ({ ...f, status_ro: v }))} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <ThemedDatePicker label="Mulai SK" value={toDate(edit_form.mulai_sk)} onChange={(d) => setEditForm((f: any) => ({ ...f, mulai_sk: fromDate(d) }))} />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <ThemedDatePicker label="Berakhir SK" value={toDate(edit_form.berakhir_sk)} onChange={(d) => setEditForm((f: any) => ({ ...f, berakhir_sk: fromDate(d) }))} />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <RupiahField label="Total Plafon" value={edit_form.total_plafon} onChange={(n) => setEditForm((f: any) => ({ ...f, total_plafon: n }))} required />
           </Grid>
         </Grid>
       </Modal>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Box, Grid, TextField, Typography, Chip, Alert } from "@mui/material";
+import { Box, TextField, Typography, Alert } from "@mui/material";
 import { SaveOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
-import { InfoCard, SearchableSelect, SoftButton } from "../../components";
+import { InfoCard, SearchableSelect, SoftButton, StatusChip } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 import { kategori_kamar_label } from "../../common/hris";
@@ -78,38 +78,54 @@ export function PengaturanMarginPage() {
 
   return (
     <DashboardLayout sectionTitle="Sistem" title="Pengaturan Margin" headerTitle="Pengaturan Margin (5 Kamar)" headerDescription="Atur persentase dan unit koordinator pemilik wallet untuk distribusi margin otomatis. Total harus 100%.">
-      <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
         {msg && (
-          <Alert severity="success" onClose={() => setMsg("")}>
+          <Alert severity="success" onClose={() => setMsg("")} sx={{ py: 0.5, fontSize: "0.85rem" }}>
             {msg}
           </Alert>
         )}
         {error && <InfoCard message={error} variant="error" />}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
-          <Chip label={`Total: ${total.toFixed(2)}%`} color={totalOk ? "success" : "error"} size="small" />
-          {!totalOk && <Typography sx={{ fontSize: "0.8rem", color: "#dc2626" }}>Total harus 100% — distribusi akan gagal jika tidak 100%</Typography>}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+          <StatusChip label={`Total: ${total.toFixed(2)}%`} variant={totalOk ? "success" : "danger"} size="small" />
+          {!totalOk && <Typography sx={{ fontSize: "0.75rem", color: "#dc2626", fontWeight: 600 }}>Total harus 100% — distribusi akan gagal jika tidak 100%</Typography>}
+          {totalOk && <Typography sx={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>Siap didistribusikan</Typography>}
         </Box>
         {loading ? (
           <InfoCard message="Memuat..." variant="info" />
         ) : (
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr", xl: "1fr 1fr 1fr" }, gap: 1.25 }}>
             {items.map((row) => (
-              <Box key={row.id} sx={{ p: 2, border: "1px solid var(--border)", borderRadius: 2, bgcolor: "var(--card)", display: "flex", flexDirection: "column", gap: 1.5 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
-                    {kategori_kamar_label(row.kategori_kamar)}{" "}
-                    <Typography component="span" sx={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>
-                      ({row.kategori_kamar})
-                    </Typography>
-                  </Typography>
-                  <Chip label={`${row.persentase}%`} size="small" variant="outlined" />
+              <Box
+                key={row.id}
+                sx={{
+                  p: 1.5,
+                  border: "1px solid var(--border)",
+                  borderRadius: 2,
+                  bgcolor: "var(--card)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  transition: "border-color 0.15s",
+                  "&:hover": { borderColor: "var(--primary)" },
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{kategori_kamar_label(row.kategori_kamar)}</Typography>
+                  <StatusChip label={`${row.persentase}%`} variant={Number(row.persentase) > 0 ? "info" : "neutral"} size="small" />
                 </Box>
-                <TextField label="Nama Kamar" size="small" fullWidth value={row.nama_kamar ?? ""} onChange={(e) => updateField(row.id, "nama_kamar", e.target.value)} />
-                <Grid container spacing={1.5}>
-                  <Grid size={{ xs: 4 }}>
-                    <TextField label="Persentase %" size="small" fullWidth type="number" value={String(row.persentase ?? "")} onChange={(e) => updateField(row.id, "persentase", e.target.value === "" ? "" : Number(e.target.value))} />
-                  </Grid>
-                  <Grid size={{ xs: 8 }}>
+                <TextField label="Nama Kamar" size="small" fullWidth value={row.nama_kamar ?? ""} onChange={(e) => updateField(row.id, "nama_kamar", e.target.value)} sx={{ "& .MuiInputBase-input": { fontSize: "0.85rem", py: 0.75 } }} />
+                <Box sx={{ display: "flex", gap: 1, minWidth: 0 }}>
+                  <TextField
+                    label="Persentase %"
+                    size="small"
+                    type="number"
+                    value={String(row.persentase ?? "")}
+                    onChange={(e) => updateField(row.id, "persentase", e.target.value === "" ? "" : Number(e.target.value))}
+                    sx={{ flex: "0 0 92px", "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     <SearchableSelect
                       label="Unit Koordinator"
                       value={String(row.unit_kerja_id ?? "")}
@@ -118,10 +134,10 @@ export function PengaturanMarginPage() {
                       loading={(unit_query as any).is_loading}
                       placeholder="Pilih unit..."
                     />
-                  </Grid>
-                </Grid>
-                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                  <SoftButton size="small" startIcon={<SaveOutlined />} onClick={() => save(row)} disabled={saving === row.id}>
+                  </Box>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 0.25 }}>
+                  <SoftButton size="small" startIcon={<SaveOutlined sx={{ fontSize: 16 }} />} onClick={() => save(row)} disabled={saving === row.id} sx={{ height: 28, fontSize: "0.75rem" }}>
                     {saving === row.id ? "Menyimpan..." : "Simpan"}
                   </SoftButton>
                 </Box>
@@ -129,7 +145,7 @@ export function PengaturanMarginPage() {
             ))}
           </Box>
         )}
-      </Box>
+      </div>
     </DashboardLayout>
   );
 }
