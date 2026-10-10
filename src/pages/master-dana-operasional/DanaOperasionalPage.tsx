@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Grid, TextField, Typography, Chip } from "@mui/material";
 import { EditOutlined, DeleteOutlined, VisibilityOutlined, AccountBalanceWalletOutlined } from "@mui/icons-material";
@@ -9,6 +9,7 @@ import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
 import { resolve_current_role, current_year, format_rupiah, unwrap_list, unwrap_pagination, kategori_kamar_label, kategori_kamar_percent, KATEGORI_KAMAR_OPTIONS } from "../../common/hris";
+import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
 function Field({ label, value, onChange, required, disabled, type }: any) {
   return (
@@ -40,6 +41,22 @@ export function DanaOperasionalPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [confirm_target, setConfirmTarget] = useState<any>(null);
+  const [rekening_options, setRekeningOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    const load_rekening = async () => {
+      try {
+        const token = auth_signal.value.selectedToken || "";
+        const response = await fetch("/api/master-rekening", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const body = await response.json();
+        const rows = body?.data ?? body ?? [];
+        setRekeningOptions((Array.isArray(rows) ? rows : []).filter((row: any) => row.status_aktif === "AKTIF").map((row: any) => ({ value: row.id, label: `${row.nama_rekening} — ${row.nomor_rekening}` })));
+      } catch {
+        setRekeningOptions([]);
+      }
+    };
+    void load_rekening();
+  }, []);
 
   const list_query = use_query({
     api_tag: "masterDanaOperasional",
@@ -65,11 +82,17 @@ export function DanaOperasionalPage() {
 
   const open_edit = (row: any) => {
     setEditing(row);
-    setForm({ id_unit_koordinator: row.id_unit_koordinator ?? row.unit_koordinator_id ?? "", tahun_fiscal: String(row.tahun_fiscal ?? current_year()), total_plafon: row.total_plafon ?? "", kategori_kamar: row.kategori_kamar ?? "LAINNYA" });
+    setForm({
+      id_unit_koordinator: row.id_unit_koordinator ?? row.unit_koordinator_id ?? "",
+      id_rekening: row.id_rekening ?? row.rekening_id ?? "",
+      tahun_fiscal: String(row.tahun_fiscal ?? current_year()),
+      total_plafon: row.total_plafon ?? "",
+      kategori_kamar: row.kategori_kamar ?? "LAINNYA",
+    });
     set_modal_open(true);
   };
   const submit = () => {
-    if (editing) update_mutation([editing.id, { total_plafon: Number(form.total_plafon) }]);
+    if (editing) update_mutation([editing.id, { total_plafon: Number(form.total_plafon), id_rekening: form.id_rekening || undefined }]);
   };
   const open_detail = (row: any) => navigate(`/dana-operasional/${row.id}`);
 
@@ -279,6 +302,15 @@ export function DanaOperasionalPage() {
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <RupiahField label="Total Plafon" value={form.total_plafon} onChange={(n) => set_field("total_plafon", n)} required />
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <SearchableSelect
+              label="Rekening Fisik"
+              value={String(form.id_rekening ?? "")}
+              options={[{ value: "", label: "Belum dipetakan" }, ...rekening_options]}
+              onChange={(v) => set_field("id_rekening", v)}
+              placeholder="Pilih rekening untuk rekonsiliasi..."
+            />
           </Grid>
           <Grid size={{ xs: 12 }}>
             <SearchableSelect label="Kamar (Kategori)" value={String(form.kategori_kamar ?? "LAINNYA")} options={KATEGORI_KAMAR_OPTIONS} onChange={(v) => set_field("kategori_kamar", v)} disabled placeholder="Pilih kamar..." />

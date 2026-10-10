@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
- 
+
 import { DependencyList, useEffect } from "react";
 import network_cache from "./api-cache";
 import { show_alert_snackbar } from "@Signal/use-signal/snackbar_signal";
@@ -57,7 +57,7 @@ export default function use_query<
   const { api_tag, api_method, api_query, should_running_if = true, options } = props;
 
   // Subscribe to auth signal so queries refetch when token/role changes
-   
+
   const authState = useSignalValue(auth_signal);
   const selectedToken = authState?.selectedToken || "";
   const isProtectedQuery = api_tag !== "auth";
@@ -182,6 +182,8 @@ export default function use_query<
   }, [network_cache_symbol, refreshTrigger, canRunQuery]);
 
   const enhanced_callback = () => {
+    // Evict cached response so refreshTrigger always performs a fresh request.
+    network_cache.delete(network_cache_symbol);
     setRefreshTrigger((prev) => prev + 1);
   };
 

@@ -307,6 +307,7 @@ export interface RoItemDto {
   no_kontrak?: object | null;
   pj?: object | null;
   file_rab?: object | null;
+  file_sk?: object | null;
   status_ro?: string;
   no_sk?: object | null;
   mulai_sk?: object | null;
@@ -326,6 +327,8 @@ export interface CreateRoDto {
   id_proyek: string;
   /** ID unit koordinator pemilik RO */
   id_unit_koordinator: string;
+  /** ID rekening fisik sumber saldo RO */
+  id_rekening?: string;
   /** @example 2026 */
   tahun_fiscal: number;
   /**
@@ -349,6 +352,8 @@ export interface CreateRoDto {
 
 export interface UpdateRoDto {
   nama_ro?: string;
+  /** ID rekening fisik sumber saldo RO */
+  id_rekening?: string;
   total_plafon?: number;
   no_kontrak?: string;
   pj?: string;
@@ -405,6 +410,8 @@ export interface DanaOperasionalItemDto {
 export interface CreateDanaOperasionalDto {
   /** ID unit koordinator pemilik dana operasional */
   id_unit_koordinator: string;
+  /** ID rekening fisik sumber saldo dana */
+  id_rekening?: string;
   /** @example 2026 */
   tahun_fiscal: number;
   /**
@@ -426,6 +433,8 @@ export interface CreateDanaOperasionalDto {
 }
 
 export interface UpdateDanaOperasionalDto {
+  /** ID rekening fisik sumber saldo dana */
+  id_rekening?: string;
   /**
    * Total plafon baru Rupiah (integer)
    * @example 250000000
@@ -680,6 +689,48 @@ export interface UpdatePengaturanMarginDto {
   persentase?: number;
   /** Unit koordinator pemilik wallet */
   unit_kerja_id?: string;
+}
+
+export interface CreateMasterRekeningDto {
+  /** @example "Bank Mandiri" */
+  nama_bank: string;
+  /** @example "1010002727772" */
+  nomor_rekening: string;
+  /** @example "RPL 019 BLU LEMIGAS UNTUK OPS P." */
+  nama_rekening: string;
+}
+
+export interface UpdateMasterRekeningDto {
+  /** @example "Bank Mandiri" */
+  nama_bank?: string;
+  /** @example "1010002727772" */
+  nomor_rekening?: string;
+  /** @example "RPL 019 BLU LEMIGAS UNTUK OPS P." */
+  nama_rekening?: string;
+  /** @example true */
+  status_aktif?: boolean;
+}
+
+export interface CreateRekonsiliasiBankDto {
+  /** ID rekening fisik */
+  rekening_id: string;
+  /**
+   * Saldo rekening koran dalam Rupiah
+   * @example 106397603988
+   */
+  saldo_bank: number;
+  /** @example "Pajak belum disetor" */
+  keterangan?: string;
+  /**
+   * Default hari ini
+   * @example "2026-10-10"
+   */
+  tanggal_rekonsiliasi?: string;
+  /**
+   * Default tahun dari tanggal rekonsiliasi
+   * @example 2026
+   */
+  tahun_fiscal?: number;
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -1570,7 +1621,7 @@ export class Api<
      *
      * @tags Master - RO
      * @name RoControllerUpdate
-     * @summary Update RO (Superadmin)
+     * @summary Update RO (Superadmin, Koordinator)
      * @request PUT:/api/ro/{id}
      * @secure
      */
@@ -1646,6 +1697,23 @@ export class Api<
     roControllerUploadRab: (id: string, params: RequestParams = {}) =>
       this.request<void, any>({
         path: `/api/ro/${id}/rab`,
+        method: "POST",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - RO
+     * @name RoControllerUploadSk
+     * @summary Upload SK RO (Superadmin, Koordinator)
+     * @request POST:/api/ro/{id}/sk
+     * @secure
+     */
+    roControllerUploadSk: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/ro/${id}/sk`,
         method: "POST",
         secure: true,
         ...params,
@@ -2823,6 +2891,178 @@ export class Api<
       this.request<void, any>({
         path: `/api/pengaturan-margin/${id}`,
         method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+  };
+  masterRekeningBank = {
+    /**
+     * No description
+     *
+     * @tags Master - Rekening Bank
+     * @name MasterRekeningControllerFindAll
+     * @summary Get daftar rekening bank (Superadmin, KEUANGAN)
+     * @request GET:/api/master-rekening
+     * @secure
+     */
+    masterRekeningControllerFindAll: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/master-rekening`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Rekening Bank
+     * @name MasterRekeningControllerCreate
+     * @summary Buat rekening bank (Superadmin, KEUANGAN)
+     * @request POST:/api/master-rekening
+     * @secure
+     */
+    masterRekeningControllerCreate: (
+      data: CreateMasterRekeningDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/master-rekening`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Rekening Bank
+     * @name MasterRekeningControllerFindOne
+     * @summary Get detail rekening bank (Superadmin, KEUANGAN)
+     * @request GET:/api/master-rekening/{id}
+     * @secure
+     */
+    masterRekeningControllerFindOne: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/master-rekening/${id}`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Rekening Bank
+     * @name MasterRekeningControllerUpdate
+     * @summary Ubah rekening bank (Superadmin, KEUANGAN)
+     * @request PUT:/api/master-rekening/{id}
+     * @secure
+     */
+    masterRekeningControllerUpdate: (
+      id: string,
+      data: UpdateMasterRekeningDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/master-rekening/${id}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Master - Rekening Bank
+     * @name MasterRekeningControllerRemove
+     * @summary Hapus rekening bank (Superadmin)
+     * @request DELETE:/api/master-rekening/{id}
+     * @secure
+     */
+    masterRekeningControllerRemove: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/api/master-rekening/${id}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+  };
+  rekonsiliasiBank = {
+    /**
+     * No description
+     *
+     * @tags Rekonsiliasi Bank
+     * @name RekonsiliasiBankControllerGetSaldoSistem
+     * @summary Hitung saldo kas virtual sistem (Superadmin, KEUANGAN)
+     * @request GET:/api/rekonsiliasi/saldo-sistem
+     * @secure
+     */
+    rekonsiliasiBankControllerGetSaldoSistem: (
+      query?: {
+        /** @example "uuid-rekening" */
+        rekening_id?: string;
+        /** @example 2026 */
+        tahun_fiscal?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/rekonsiliasi/saldo-sistem`,
+        method: "GET",
+        query: query,
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Rekonsiliasi Bank
+     * @name RekonsiliasiBankControllerFindAll
+     * @summary Get riwayat rekonsiliasi bank (Superadmin, KEUANGAN)
+     * @request GET:/api/rekonsiliasi
+     * @secure
+     */
+    rekonsiliasiBankControllerFindAll: (
+      query?: {
+        /** @example "uuid-rekening" */
+        rekening_id?: string;
+        /** @example 2026 */
+        tahun_fiscal?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/rekonsiliasi`,
+        method: "GET",
+        query: query,
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Rekonsiliasi Bank
+     * @name RekonsiliasiBankControllerCreate
+     * @summary Buat rekonsiliasi bank (Superadmin, KEUANGAN)
+     * @request POST:/api/rekonsiliasi
+     * @secure
+     */
+    rekonsiliasiBankControllerCreate: (
+      data: CreateRekonsiliasiBankDto,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/api/rekonsiliasi`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,

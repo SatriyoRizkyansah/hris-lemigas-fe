@@ -8,6 +8,7 @@ import {
   PaymentsOutlined as DanaIcon,
   DescriptionOutlined as SkIcon,
   AccountBalanceOutlined as AlokasiIcon,
+  FactCheckOutlined as RekonsiliasiIcon,
   SummarizeOutlined as RekapIcon,
   AdminPanelSettingsOutlined as UsersIcon,
   AccountBoxOutlined as AccountBoxIcon,
@@ -58,24 +59,28 @@ const masterItems: NavItem[] = [
   { title: "Proyek", icon: <ProyekIcon fontSize="small" />, path: "/proyek" },
   { title: "RO", icon: <RoIcon fontSize="small" />, path: "/ro" },
   { title: "Dana Operasional", icon: <DanaIcon fontSize="small" />, path: "/dana-operasional" },
+  { title: "Master Rekening", icon: <AlokasiIcon fontSize="small" />, path: "/rekening" },
 ];
 
 const transaksiItems: NavItem[] = [
   { title: "SK", icon: <SkIcon fontSize="small" />, path: "/sk" },
   { title: "Alokasi Gaji", icon: <AlokasiIcon fontSize="small" />, path: "/alokasi-gaji" },
   { title: "Rekap Alokasi", icon: <RekapIcon fontSize="small" />, path: "/alokasi-gaji/rekap" },
+  { title: "Rekonsiliasi Bank", icon: <RekonsiliasiIcon fontSize="small" />, path: "/rekonsiliasi-bank" },
 ];
 
 // Menu khusus Keuangan (Juru Bayar)
 const keuanganTransaksiItems: NavItem[] = [
   { title: "Tagihan Alokasi", icon: <TagihanIcon fontSize="small" />, path: "/alokasi-gaji" },
   { title: "Rekap BLU", icon: <RekapIcon fontSize="small" />, path: "/alokasi-gaji/rekap" },
+  { title: "Rekonsiliasi Bank", icon: <RekonsiliasiIcon fontSize="small" />, path: "/rekonsiliasi-bank" },
 ];
 
 const keuanganMasterItems: NavItem[] = [
   { title: "Proyek", icon: <ProyekIcon fontSize="small" />, path: "/proyek" },
   { title: "RO", icon: <RoIcon fontSize="small" />, path: "/ro" },
   { title: "Dana Operasional", icon: <DanaIcon fontSize="small" />, path: "/dana-operasional" },
+  { title: "Master Rekening", icon: <AlokasiIcon fontSize="small" />, path: "/rekening" },
 ];
 
 const sistemItems: NavItem[] = [
@@ -95,8 +100,8 @@ const superadminSections: SidebarSection[] = [
 
 const koordinatorSections: SidebarSection[] = [
   { key: "overview", title: "Overview", abbreviation: "OV", items: overviewItems },
-  { key: "master", title: "Master Data", abbreviation: "MD", items: masterItems },
-  { key: "transaksi", title: "Transaksi", abbreviation: "TR", items: transaksiItems },
+  { key: "master", title: "Master Data", abbreviation: "MD", items: masterItems.filter((item) => item.path !== "/rekening") },
+  { key: "transaksi", title: "Transaksi", abbreviation: "TR", items: transaksiItems.filter((item) => item.path !== "/rekonsiliasi-bank") },
   { key: "sistem", title: "Akun", abbreviation: "AK", items: [sistemItems[1]] },
 ];
 

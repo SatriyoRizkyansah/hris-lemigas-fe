@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Typography, Stack, Chip, Tabs, Tab } from "@mui/material";
+import { Box, Typography, Stack, Chip, Tabs, Tab, LinearProgress } from "@mui/material";
 import { ArrowBackOutlined, AddOutlined, EditOutlined, DeleteOutlined } from "@mui/icons-material";
 import { DashboardLayout } from "../../layouts";
 import { ActionButton, ActionButtonGroup, DataTable, InfoCard, Modal, SoftButton } from "../../components";
@@ -40,9 +40,20 @@ export function DanaOperasionalDetailPage() {
   const [active_tab, setActiveTab] = useState<"ledger" | "alokasi">("ledger");
   const [ledger_filter, setLedgerFilter] = useState("all");
   const [alokasi_filter, setAlokasiFilter] = useState("all");
+  const [trx_saving, setTrxSaving] = useState(false);
+  const [trx_deleting_id, setTrxDeletingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const detail_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetDetail", api_query: [id as any] as any, should_running_if: Boolean(id) } as any);
   const ledger_query = use_query({ api_tag: "masterDanaOperasional", api_method: "danaOperasionalControllerGetLedger", api_query: [id as string], should_running_if: Boolean(id) } as any);
+
+  const refresh_detail = async () => {
+    setRefreshing(true);
+    detail_query.call_back();
+    ledger_query.call_back();
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    setRefreshing(false);
+  };
 
   const detail: any = (detail_query.response as any)?.data ?? (detail_query.response as any) ?? null;
   const d = detail?.data ?? detail;
@@ -58,7 +69,8 @@ export function DanaOperasionalDetailPage() {
   const alokasi_status_options = Array.from(new Set(alokasi_list.map((row) => String(row.status ?? "").toUpperCase()).filter(Boolean)));
 
   const handle_trx_submit = async () => {
-    if (!id) return;
+    if (!id || trx_saving) return;
+    setTrxSaving(true);
     const token = auth_signal.value.selectedToken || "";
     const payload: any = {
       nama_kegiatan: trx_form.nama_kegiatan,
@@ -76,23 +88,26 @@ export function DanaOperasionalDetailPage() {
       setTrxModalOpen(false);
       setTrxEditing(null);
       setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
-      detail_query.call_back();
-      ledger_query.call_back();
+      await refresh_detail();
     } catch (e: any) {
       alert(e?.message ?? "Gagal simpan transaksi");
+    } finally {
+      setTrxSaving(false);
     }
   };
 
   const handle_trx_delete = async (tid: string) => {
-    if (!id || !confirm("Hapus transaksi ini?")) return;
+    if (!id || trx_deleting_id || !confirm("Hapus transaksi ini?")) return;
+    setTrxDeletingId(tid);
     const token = auth_signal.value.selectedToken || "";
     try {
       const res = await fetch(`/api/dana-operasional/${id}/transaksi/${tid}`, { method: "DELETE", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
-      detail_query.call_back();
-      ledger_query.call_back();
+      await refresh_detail();
     } catch (e: any) {
       alert(e?.message ?? "Gagal hapus transaksi");
+    } finally {
+      setTrxDeletingId(null);
     }
   };
 
@@ -149,7 +164,13 @@ export function DanaOperasionalDetailPage() {
                     setTrxModalOpen(true);
                   }}
                 />
-                <ActionButton variant="delete" title="Hapus" icon={<DeleteOutlined fontSize="small" />} onClick={() => handle_trx_delete(r.id)} />
+                <ActionButton
+                  variant="delete"
+                  title={trx_deleting_id === r.id ? "Menghapus..." : "Hapus"}
+                  icon={<DeleteOutlined fontSize="small" />}
+                  disabled={Boolean(trx_deleting_id) || trx_saving}
+                  onClick={() => handle_trx_delete(r.id)}
+                />
               </ActionButtonGroup>
             ),
           } as any,
@@ -188,6 +209,7 @@ export function DanaOperasionalDetailPage() {
         </SoftButton>
       }
     >
+      {(refreshing || trx_saving || Boolean(trx_deleting_id)) && <LinearProgress sx={{ position: "sticky", top: 0, zIndex: 5 }} />}
       <Box sx={{ py: 2.5, px: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
         {/* Summary cards */}
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 2 }}>
@@ -253,6 +275,7 @@ export function DanaOperasionalDetailPage() {
               <SoftButton
                 size="small"
                 startIcon={<AddOutlined />}
+                disabled={trx_saving || Boolean(trx_deleting_id)}
                 onClick={() => {
                   setTrxEditing(null);
                   setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: new Date().toISOString().slice(0, 10), debit: "", kredit: "", keterangan: "" });
@@ -368,8 +391,8 @@ export function DanaOperasionalDetailPage() {
         description="Isi debit untuk pengeluaran, kredit untuk uang masuk."
         maxWidth={600}
         actions={[
-          { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false) },
-          { label: trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit },
+          { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false), disabled: trx_saving },
+          { label: trx_saving ? "Menyimpan..." : trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit, disabled: trx_saving },
         ]}
       >
         <Grid container spacing={2} sx={{ mt: 0.5 }}>

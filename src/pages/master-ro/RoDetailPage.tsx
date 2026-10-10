@@ -56,6 +56,9 @@ export function RoDetailPage() {
   const [alokasi_filter, setAlokasiFilter] = useState("all");
   const [edit_open, setEditOpen] = useState(false);
   const [edit_form, setEditForm] = useState<any>({});
+  const [trx_saving, setTrxSaving] = useState(false);
+  const [trx_deleting_id, setTrxDeletingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const detail_query = use_query({
     api_tag: "masterRo",
@@ -71,6 +74,14 @@ export function RoDetailPage() {
     api_query: [id as string],
     should_running_if: Boolean(id),
   } as any);
+
+  const refresh_detail = async () => {
+    setRefreshing(true);
+    detail_query.call_back();
+    ledger_query.call_back();
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    setRefreshing(false);
+  };
 
   const detail: any = (detail_query.response as any)?.data ?? (detail_query.response as any) ?? null;
   const d = detail?.data ?? detail;
@@ -129,7 +140,8 @@ export function RoDetailPage() {
   };
 
   const handle_trx_submit = async () => {
-    if (!id) return;
+    if (!id || trx_saving) return;
+    setTrxSaving(true);
     const token = auth_signal.value.selectedToken || "";
     const payload: any = {
       nama_kegiatan: trx_form.nama_kegiatan,
@@ -147,23 +159,26 @@ export function RoDetailPage() {
       setTrxModalOpen(false);
       setTrxEditing(null);
       setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: "", debit: "", kredit: "", keterangan: "" });
-      detail_query.call_back();
-      ledger_query.call_back();
+      await refresh_detail();
     } catch (e: any) {
       alert(e?.message ?? "Gagal simpan transaksi");
+    } finally {
+      setTrxSaving(false);
     }
   };
 
   const handle_trx_delete = async (tid: string) => {
-    if (!id || !confirm("Hapus transaksi ini?")) return;
+    if (!id || trx_deleting_id || !confirm("Hapus transaksi ini?")) return;
+    setTrxDeletingId(tid);
     const token = auth_signal.value.selectedToken || "";
     try {
       const res = await fetch(`/api/ro/${id}/transaksi/${tid}`, { method: "DELETE", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) throw new Error(await res.text());
-      detail_query.call_back();
-      ledger_query.call_back();
+      await refresh_detail();
     } catch (e: any) {
       alert(e?.message ?? "Gagal hapus transaksi");
+    } finally {
+      setTrxDeletingId(null);
     }
   };
 
@@ -172,8 +187,7 @@ export function RoDetailPage() {
     api_method: "roControllerUpdate",
     options: {
       call_back: () => {
-        detail_query.call_back();
-        ledger_query.call_back();
+        void refresh_detail();
       },
       will_exec_after_success: () => setEditOpen(false),
     },
@@ -263,7 +277,13 @@ export function RoDetailPage() {
                     setTrxModalOpen(true);
                   }}
                 />
-                <ActionButton variant="delete" title="Hapus" icon={<DeleteOutlined fontSize="small" />} onClick={() => handle_trx_delete(r.id)} />
+                <ActionButton
+                  variant="delete"
+                  title={trx_deleting_id === r.id ? "Menghapus..." : "Hapus"}
+                  icon={<DeleteOutlined fontSize="small" />}
+                  disabled={Boolean(trx_deleting_id) || trx_saving}
+                  onClick={() => handle_trx_delete(r.id)}
+                />
               </ActionButtonGroup>
             ),
           } as any,
@@ -315,6 +335,7 @@ export function RoDetailPage() {
           Data RO belum lengkap — lengkapi <b>No Kontrak, PJ, No SK, Periode SK</b> agar RO siap dipakai. Klik <b>Lengkapi RO</b>.
         </Alert>
       )}
+      {(refreshing || trx_saving || Boolean(trx_deleting_id)) && <LinearProgress sx={{ position: "sticky", top: 0, zIndex: 5 }} />}
       <Box sx={{ py: 2.5, px: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
         {/* Anggaran summary */}
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 2 }}>
@@ -420,6 +441,7 @@ export function RoDetailPage() {
               <SoftButton
                 size="small"
                 startIcon={<AddOutlined />}
+                disabled={trx_saving || Boolean(trx_deleting_id)}
                 onClick={() => {
                   setTrxEditing(null);
                   setTrxForm({ nama_kegiatan: "", no_kuitansi: "", tanggal: new Date().toISOString().slice(0, 10), debit: "", kredit: "", keterangan: "" });
@@ -532,8 +554,8 @@ export function RoDetailPage() {
           description="Isi debit untuk pengeluaran, kredit untuk uang masuk."
           maxWidth={600}
           actions={[
-            { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false) },
-            { label: trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit },
+            { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false), disabled: trx_saving },
+            { label: trx_saving ? "Menyimpan..." : trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit, disabled: trx_saving },
           ]}
         >
           <Grid container spacing={2} sx={{ mt: 0.5, pt: 1 }}>
@@ -606,8 +628,8 @@ export function RoDetailPage() {
         description="Isi debit untuk pengeluaran, kredit untuk uang masuk."
         maxWidth={600}
         actions={[
-          { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false) },
-          { label: trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit },
+          { label: "Batal", variant: "ghost", onClick: () => setTrxModalOpen(false), disabled: trx_saving },
+          { label: trx_saving ? "Menyimpan..." : trx_editing ? "Simpan" : "Tambah", variant: "primary", onClick: handle_trx_submit, disabled: trx_saving },
         ]}
       >
         <Grid container spacing={2} sx={{ mt: 0.5, pt: 1 }}>

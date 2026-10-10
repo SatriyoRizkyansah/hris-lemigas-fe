@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Grid, TextField, Typography, Chip } from "@mui/material";
 import { AddOutlined, EditOutlined, DeleteOutlined, VisibilityOutlined } from "@mui/icons-material";
@@ -9,6 +9,7 @@ import type { Column } from "../../components";
 import use_query from "@Hooks/api-use-query";
 import use_mutation from "@Hooks/api-use-mutation";
 import { resolve_current_role, current_year, format_rupiah, format_date, status_variant, unwrap_list, unwrap_pagination, STATUS_RO_OPTIONS } from "../../common/hris";
+import { auth_signal } from "@Signal/use-signal/auth-init-signal";
 
 function Field({ label, value, onChange, required, disabled, type }: any) {
   return (
@@ -45,6 +46,22 @@ export function RoPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [confirm_target, setConfirmTarget] = useState<any>(null);
+  const [rekening_options, setRekeningOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    const load_rekening = async () => {
+      try {
+        const token = auth_signal.value.selectedToken || "";
+        const response = await fetch("/api/master-rekening", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const body = await response.json();
+        const rows = body?.data ?? body ?? [];
+        setRekeningOptions((Array.isArray(rows) ? rows : []).filter((row: any) => row.status_aktif === "AKTIF").map((row: any) => ({ value: row.id, label: `${row.nama_rekening} — ${row.nomor_rekening}` })));
+      } catch {
+        setRekeningOptions([]);
+      }
+    };
+    void load_rekening();
+  }, []);
 
   const list_query = use_query({
     api_tag: "masterRo",
@@ -77,7 +94,21 @@ export function RoPage() {
 
   const open_create = () => {
     setEditing(null);
-    setForm({ kode_ro: "", nama_ro: "", id_proyek: "", id_unit_koordinator: "", tahun_fiscal: String(current_year()), total_plafon: "", no_kontrak: "", pj: "", no_sk: "", mulai_sk: "", berakhir_sk: "", status_ro: "AKTIF" });
+    setForm({
+      kode_ro: "",
+      nama_ro: "",
+      id_proyek: "",
+      id_unit_koordinator: "",
+      id_rekening: "",
+      tahun_fiscal: String(current_year()),
+      total_plafon: "",
+      no_kontrak: "",
+      pj: "",
+      no_sk: "",
+      mulai_sk: "",
+      berakhir_sk: "",
+      status_ro: "AKTIF",
+    });
     set_modal_open(true);
   };
   const open_edit = (row: any) => {
@@ -87,6 +118,7 @@ export function RoPage() {
       nama_ro: row.nama_ro ?? "",
       id_proyek: row.id_proyek ?? row.proyek_id ?? "",
       id_unit_koordinator: row.id_unit_koordinator ?? row.unit_koordinator_id ?? "",
+      id_rekening: row.id_rekening ?? row.rekening_id ?? "",
       tahun_fiscal: String(row.tahun_fiscal ?? current_year()),
       total_plafon: row.total_plafon ?? "",
       no_kontrak: row.no_kontrak ?? "",
@@ -105,6 +137,7 @@ export function RoPage() {
         {
           nama_ro: form.nama_ro,
           total_plafon: Number(form.total_plafon),
+          id_rekening: form.id_rekening || undefined,
           no_kontrak: form.no_kontrak || undefined,
           pj: form.pj || undefined,
           no_sk: form.no_sk || undefined,
@@ -122,6 +155,7 @@ export function RoPage() {
           id_unit_koordinator: form.id_unit_koordinator,
           tahun_fiscal: Number(form.tahun_fiscal),
           total_plafon: Number(form.total_plafon),
+          id_rekening: form.id_rekening || undefined,
           no_kontrak: form.no_kontrak || undefined,
           pj: form.pj || undefined,
           no_sk: form.no_sk || undefined,
@@ -303,6 +337,15 @@ export function RoPage() {
               </Grid>
             </>
           )}
+          <Grid size={{ xs: 12 }}>
+            <SearchableSelect
+              label="Rekening Fisik"
+              value={String(form.id_rekening ?? "")}
+              options={[{ value: "", label: "Belum dipetakan" }, ...rekening_options]}
+              onChange={(v: string) => set_field("id_rekening", v)}
+              placeholder="Pilih rekening untuk rekonsiliasi..."
+            />
+          </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <Field label="No Kontrak" value={form.no_kontrak} onChange={(v: string) => set_field("no_kontrak", v)} />
           </Grid>

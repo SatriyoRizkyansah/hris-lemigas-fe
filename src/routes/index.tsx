@@ -20,6 +20,8 @@ const RekapAlokasiPage = lazy(() => import("../pages/alokasi-gaji/RekapAlokasiPa
 const UsersPage = lazy(() => import("../pages/users/UsersPage"));
 const ProfilPage = lazy(() => import("../pages/profil/ProfilPage"));
 const PengaturanMarginPage = lazy(() => import("../pages/pengaturan-margin/PengaturanMarginPage"));
+const MasterRekeningPage = lazy(() => import("../pages/master-rekening/MasterRekeningPage"));
+const RekonsiliasiBankPage = lazy(() => import("../pages/rekonsiliasi-bank/RekonsiliasiBankPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
 /** Redirect ke /login jika belum authenticated */
@@ -50,12 +52,9 @@ function RequireRole({ roles, children }: { roles: HrisRole[]; children: ReactNo
 
 const SUPERADMIN_ONLY: HrisRole[] = ["superadmin"];
 const SUPERADMIN_KOORDINATOR: HrisRole[] = ["superadmin", "koordinator"];
-// FINANCE_TEAM defined per spec (superadmin+keuangan) — used for future finance-only guards
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FINANCE_TEAM: HrisRole[] = ["superadmin", "keuangan"];
 const ALL_MANAGEMENT: HrisRole[] = ["superadmin", "koordinator", "keuangan"];
 const EVERYONE: HrisRole[] = ["superadmin", "koordinator", "keuangan", "karyawan"];
-void FINANCE_TEAM;
 
 // ─── App Routes ───────────────────────────────────────────────────────────────
 
@@ -129,6 +128,14 @@ export function AppRoutes() {
               </RequireRole>
             }
           />
+          <Route
+            path="/rekening"
+            element={
+              <RequireRole roles={FINANCE_TEAM}>
+                <MasterRekeningPage />
+              </RequireRole>
+            }
+          />
 
           {/* Transaksi */}
           <Route
@@ -152,6 +159,14 @@ export function AppRoutes() {
             element={
               <RequireRole roles={ALL_MANAGEMENT}>
                 <RekapAlokasiPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/rekonsiliasi-bank"
+            element={
+              <RequireRole roles={FINANCE_TEAM}>
+                <RekonsiliasiBankPage />
               </RequireRole>
             }
           />
